@@ -1,13 +1,13 @@
 from pywstk import pyRAIL
 import time
-from pySigGen import pySigGen
+from pysiggen import pySigGen
 import serial
 import numpy as np
 import xlsxwriter
 from excel_plotter.Py_to_Excel_plotter_sens import Py_to_Excel_plotter
 
 board_name = 'BRD4264B'
-freqs = [868e6, 902e6, 928e6]
+freqs = [868e6]
 
 cable_attenuation_dB = 0.5
 start_power_dBm = -77.5
@@ -20,14 +20,15 @@ settings = pySigGen.SigGenSettings()
 settings.frequency_Hz = freqs[0]
 settings.amplitude_dBm = start_power_dBm
 settings.modulation.type = "FSK2" #see all modulation abbrevations at page 299 of https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf
-settings.modulation.symbolrate_sps = 100e3
-settings.modulation.deviation_Hz = 50e3
+settings.modulation.symbolrate_sps = 500e3
+settings.modulation.deviation_Hz = 175e3
 settings.rf_on = True
 settings.mod_on = True
 settings.stream_type = "PN9" #see all available stream modes by searching for "RADio:CUSTom:DATA" in https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf
 settings.filter_type = "Gaussian" #Gaussian or Nyquist
 settings.filter_BbT = 0.5
 settings.custom_on = True
+siggen.updateDisplay(disp_on=True)
 siggen.setStream(settings)
 #print(settings)
 
