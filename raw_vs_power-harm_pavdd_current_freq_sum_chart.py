@@ -11,15 +11,15 @@ from datetime import datetime as dt
 from excel_plotter.Py_to_Excel_plotter import Py_to_Excel_plotter
 
 # Tested chip and board names 
-chip_name = 'EFR32FG23'
-board_name = 'BRD4264B'
+chip_name = 'EFR32FG28'
+board_name = 'BRD4401A'
 
 # number of frequency sweep points or discrete frequencies can be added below in "frequencies" list
 freq_start = 868e6
 freq_stop = 928e6
 freq_number_steps = 2
 #frequencies = np.linspace(freq_start, freq_stop, freq_number_steps, dtype=float)
-frequencies = [868e6,915e6]
+frequencies = [868e6,920e6]
 
 # number of PAVDD measurement sweep points or discrete PA supply voltage levels can be added below in "pavdd_levels" list
 psu_present = False
@@ -42,21 +42,23 @@ power_levels = np.linspace(min_pwr_state, max_pwr_state, pwr_number_steps, dtype
 #power_levels = [10, 100, 240]
 
 # highest harmonic order to measure
-harm_order_up_to = 3
+harm_order_up_to = 10
 
 # SA settings
 specan_address = 'TCPIP::169.254.250.234::INSTR'
-span = 2e6
-RBW = 1e4
-ref_level = 20
+span = 10e6
+RBW = 1e6
+ref_level = 10
 
-psu = pyPSU.PSU("ASRL8::INSTR")
-psu.selectOutput(1)
-psu.toggleOutput(True)
-psu.setVoltage(PAVDD_max)
-sleep(0.1)
 
-wstk = WSTK_RAILTest_Driver('COM5')
+if psu_present:
+    psu = pyPSU.PSU("ASRL8::INSTR")
+    psu.selectOutput(1)
+    psu.toggleOutput(True)
+    psu.setVoltage(PAVDD_max)
+    sleep(0.1)
+
+wstk = WSTK_RAILTest_Driver('COM10')
 wstk_echo = False
 wstk.reset()
 wstk.rx(on_off=False, echo=wstk_echo)
