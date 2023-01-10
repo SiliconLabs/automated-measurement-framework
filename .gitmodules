@@ -1,6 +1,8 @@
 [submodule "pywstk"]
 	path = pywstk
 	url = ssh://git@stash.silabs.com/iot_pa_hw/pywstk.git
+	branch = master
+	update = rebase
 [submodule "pypsu"]
 	path = pypsu
 	url = ssh://git@stash.silabs.com/iot_pa_hw/pypsu.git
