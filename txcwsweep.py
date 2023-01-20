@@ -14,10 +14,56 @@ from os import remove,path
 from dataclasses import dataclass
 import logging
 
+
+
+
 class TXCWSweep():
+    """
+    Sweeping and measuring most parameters of an EFR device transmitting
+    a carrier wave signal. 
+
+    Required instruments: 
+    - SiLabs EFR with RAILTest configured
+    - Spectrum Analyzer
+    - Optional Lab Power Supply
+    """
 
     @dataclass
     class Settings():
+        """
+        All configurable settings for this measurement.
+
+        Sweepable variables can be configured using start,stop and steps parameters
+        or by a list. If a list is not initialized, the start/stop parameters will be used. 
+
+        :param int freq_start_hz: Start frequency
+        :param int freq_stop_hz: Stop frequency
+        :param int freq_num_steps: Number of discrete frequency steps between stop and start values
+        :param list freq_list_hz: Custom list of frequencies
+        :param int harm_order_up_to: Number of harmonics to measure, fundamental included
+
+        :param bool psu_present: Power supply presence variable, default False, meaning internal 3.3V is used
+        :param str psu_address: VISA address of PSU, if serial is used, it is a COM port, check PyVISA documentation
+        :param float pavdd_min: Minimum supply voltage
+        :param float pavdd_max: Maximum supply voltage
+        :param int pavdd_num_steps: Number of discrete voltage steps between stop and start values
+        :param list pavdd_levels: Custom list of voltages
+        
+        :param int min_pwr_state: Maximum power setting for EFR internal amplifier
+        :param int max_pwr_state: Minimum power setting for EFR internal amplifier
+        :param int pwr_num_steps: Number of amplifier power values between stop and start values
+        :param list pwr_levels: Custom ist of power values
+        
+        :param str specan_address: VISA address of Spectrum Analyzer,can check PyVISA documentation
+        :param int specan_span_hz: SA span in Hz
+        :param int specan_rbw_hz: SA resolution bandwidth in Hz
+        :param int specan_ref_level_dbm: SA reference level in dBm
+        :param str specan_detector_type: SA detector type, directly passed to pySpecAn
+        :param float specan_ref_offset: SA reference offset
+
+        :param str wstk_com_port: COM port of the RAILTest device
+        :param bool wstk_echo: Logging for RAILTest
+        """
         #Frequency range settings
         freq_start_hz: int = 868e6
         freq_stop_hz: int = 928e6
@@ -44,7 +90,7 @@ class TXCWSweep():
         specan_span_hz: int = 10e6
         specan_rbw_hz: int = 1e6
         specan_ref_level_dbm: int = 20
-        specan_detector_type: str = "RMS"
+        specan_detector_type: str = "NORM"
         specan_ref_offset: float = 0.3
 
         #WSTK settings
@@ -54,27 +100,54 @@ class TXCWSweep():
         # Tested chip and board names 
 
 
-    def __init__(self,settings:Settings,chip_name,board_name,logfile_name=None):
+    def __init__(self,settings:Settings,chip_name:str,board_name:str,logfile_name:str=None,console_logging:bool = True,logging_level:str = "DEBUG"):
+        """
+        Initialize measurement class
+
+        :param Settings settings: TXCWSweep.Settings dataclass containing all the configuration
+        :param str chip_name : Name of IC being tested, only used in reporting
+        :param str board_name: Name of board, containg the IC, only used in reporting
+        :param str logfile_name: If initialized, separate logfile will be created for this measurement
+        :param bool console_logging: Enable console logging, True by default
+        """
         self.settings = settings
         self.chip_name = chip_name
         self.board_name = board_name
-
+        #Default log format for this framework
         log_format_string = '%(asctime)s [%(levelname)s]  %(name)s:    %(message)s'
+        #Calling default basic config
         logging.basicConfig(filename="app.log",filemode="w",format=log_format_string)
         self.logger = logging.getLogger(str(__name__))
-        self.logger .setLevel(logging.DEBUG)
         log_formatter = logging.Formatter(fmt=log_format_string)
-        log_console = logging.StreamHandler()
-        log_console.setFormatter(log_formatter)
-        if logfile_name is None:
-            log_file = logging.FileHandler(filename='app2.log',mode='w')
+        # optional logging to console
+        if console_logging:
+            log_console = logging.StreamHandler()
+            log_console.setFormatter(log_formatter)
+            self.logger.addHandler(log_console)
+        if logfile_name is not None:
+            log_file = logging.FileHandler(filename=logfile_name,mode='w')
             log_file.setFormatter(log_formatter)
             self.logger.addHandler(log_file)
-        self.logger.addHandler(log_console)
-
-#log_file = logging.FileHandler(filename='app.log',mode='w')
-# log_file.setFormatter(log_formatter)
-        self.logger .addHandler(log_console)
+        match logging_level:
+            case "NOTSET":
+                self.logger.setLevel(logging.NOTSET)
+            case "DEBUG":
+                self.logger.setLevel(logging.DEBUG)
+            case "INFO":
+                self.logger.setLevel(logging.INFO)
+            case "WARN":
+                self.logger.setLevel(logging.WARN)
+            case "WARNING":
+                self.logger.setLevel(logging.WARNING)
+            case "ERROR":
+                self.logger.setLevel(logging.ERROR)
+            case "FATAL":
+                self.logger.setLevel(logging.FATAL)
+            case "CRITICAL":
+                self.logger.setLevel(logging.CRITICAL)
+            case other:
+                self.logger.setLevel(logging.DEBUG)
+                self.logger.debug("Did not recognize log level, DEBUG level set")
 
     def initialize_psu(self):
         if self.settings.pavdd_levels is None:
@@ -106,7 +179,7 @@ class TXCWSweep():
         self.specan.setRefOffset(self.settings.specan_ref_offset)
 
     def initialize_wstk(self):
-        self.wstk = WSTK_RAILTest_Driver('COM5')
+        self.wstk = WSTK_RAILTest_Driver(self.settings.wstk_com_port)
 
         self.wstk.reset()
         self.wstk.rx(on_off=False, echo=self.settings.wstk_echo)
@@ -244,15 +317,29 @@ class TXCWSweep():
             self.psu.toggleOutput(False)
 
     @staticmethod
-    def get_dataframe(dataframe_filename:str)->pd.DataFrame:
+    def get_dataframe(dataframe_filename:str,index_col:list = [0,1,2])->pd.DataFrame:
+        """
+        Get DataFrame from backup file.
 
+        :param str dataframe_filename: Path for backup file
+        :param list index_col: Columns with MultiIndex, see Pandas MultiIndex docs
+
+        :return: DataFrame stored in the backup file
+        :rtype: pandas.DataFrame
+        """
         final_df  = pd.read_csv(
                                 dataframe_filename,
-                                index_col = [0, 1, 2]
+                                index_col = index_col
                                 )
         return final_df
 
     def measure(self)->pd.DataFrame:
+        """
+        Initiate the measurement.
+
+        :return: The measured data
+        :rtype: pandas.DataFrame
+        """
         self.initialize_psu()
         self.initialize_specan()
         self.initialize_wstk()
