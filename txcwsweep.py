@@ -1,5 +1,5 @@
 from pydoc import visiblename
-from tkinter import N
+
 from pywstk.pywstk_driver import WSTK_RAILTest_Driver
 from pyspecan.pySpecAn import SpecAn, RS_SpectrumAnalyzer
 import numpy as np
@@ -145,7 +145,7 @@ class TXCWSweep():
                 self.logger.setLevel(logging.FATAL)
             case "CRITICAL":
                 self.logger.setLevel(logging.CRITICAL)
-            case other:
+            case _:
                 self.logger.setLevel(logging.DEBUG)
                 self.logger.debug("Did not recognize log level, DEBUG level set")
 
