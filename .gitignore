@@ -1,1 +1,3 @@
 __pycache__/
+venv/
+local_python_env/

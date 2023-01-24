@@ -1,0 +1,14 @@
+libusb==1.0.26b4
+matplotlib==3.6.0
+numpy==1.23.2
+openpyxl==3.0.10
+pandas==1.5.0
+plotly==5.10.0
+psutil==5.9.2
+pyparsing==3.0.9
+pyserial==3.5
+pyusb==1.2.1
+PyVISA==1.12.0
+PyVISA-py==0.5.3
+RsInstrument==1.50.0.90
+XlsxWriter==3.0.3
