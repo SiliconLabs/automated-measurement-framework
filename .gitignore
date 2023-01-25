@@ -1,3 +1,5 @@
 __pycache__/
 venv/
 local_python_env/
+.python-version
+app.log
