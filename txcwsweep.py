@@ -12,7 +12,9 @@ from excel_plotter.Py_to_Excel_plotter import Py_to_Excel_plotter
 import pandas as pd
 from os import remove,path
 from dataclasses import dataclass
-import logging
+from common import logger as lg
+import atexit
+from pyvisa import errors as visaerrors
 
 
 
@@ -62,7 +64,6 @@ class TXCWSweep():
         :param float specan_ref_offset: SA reference offset
 
         :param str wstk_com_port: COM port of the RAILTest device
-        :param bool wstk_echo: Logging for RAILTest
         """
         #Frequency range settings
         freq_start_hz: int = 868e6
@@ -71,6 +72,8 @@ class TXCWSweep():
         freq_list_hz: list|None = None
         harm_order_up_to: int = 3
 
+        logger_settings: lg.Logger.Settings = lg.Logger.Settings()
+
         #Supply settings
         psu_present: bool = False
         psu_address: str = "ASRL8::INSTR"
@@ -78,6 +81,7 @@ class TXCWSweep():
         pavdd_max: float = 3.6
         pavdd_num_steps: int = 4
         pavdd_levels: list|None = None
+        psu_logger_settings: lg.Logger.Settings = lg.Logger.Settings()
         
         #Power settings
         min_pwr_state: int = 0 
@@ -92,15 +96,16 @@ class TXCWSweep():
         specan_ref_level_dbm: int = 20
         specan_detector_type: str = "NORM"
         specan_ref_offset: float = 0.3
+        specan_logger_settings: lg.Logger.Settings = lg.Logger.Settings()
 
         #WSTK settings
         wstk_com_port: str = ""
-        wstk_echo = False
+        wstk_logger_settings: lg.Logger.Settings = lg.Logger.Settings()
 
         # Tested chip and board names 
 
 
-    def __init__(self,settings:Settings,chip_name:str,board_name:str,logfile_name:str=None,console_logging:bool = True,logging_level:str = "DEBUG"):
+    def __init__(self,settings:Settings,chip_name:str,board_name:str):
         """
         Initialize measurement class
 
@@ -113,41 +118,13 @@ class TXCWSweep():
         self.settings = settings
         self.chip_name = chip_name
         self.board_name = board_name
-        #Default log format for this framework
-        log_format_string = '%(asctime)s [%(levelname)s]  %(name)s:    %(message)s'
-        #Calling default basic config
-        logging.basicConfig(filename="app.log",filemode="w",format=log_format_string)
-        self.logger = logging.getLogger(str(__name__))
-        log_formatter = logging.Formatter(fmt=log_format_string)
-        # optional logging to console
-        if console_logging:
-            log_console = logging.StreamHandler()
-            log_console.setFormatter(log_formatter)
-            self.logger.addHandler(log_console)
-        if logfile_name is not None:
-            log_file = logging.FileHandler(filename=logfile_name,mode='w')
-            log_file.setFormatter(log_formatter)
-            self.logger.addHandler(log_file)
-        match logging_level:
-            case "NOTSET":
-                self.logger.setLevel(logging.NOTSET)
-            case "DEBUG":
-                self.logger.setLevel(logging.DEBUG)
-            case "INFO":
-                self.logger.setLevel(logging.INFO)
-            case "WARN":
-                self.logger.setLevel(logging.WARN)
-            case "WARNING":
-                self.logger.setLevel(logging.WARNING)
-            case "ERROR":
-                self.logger.setLevel(logging.ERROR)
-            case "FATAL":
-                self.logger.setLevel(logging.FATAL)
-            case "CRITICAL":
-                self.logger.setLevel(logging.CRITICAL)
-            case _:
-                self.logger.setLevel(logging.DEBUG)
-                self.logger.debug("Did not recognize log level, DEBUG level set")
+
+        if self.settings.logger_settings.module_name is None:
+            self.settings.logger_settings.module_name = __name__
+
+        self.logger = lg.Logger(self.settings.logger_settings)
+        atexit.register(self.__del__)
+
 
     def initialize_psu(self):
         if self.settings.pavdd_levels is None:
@@ -159,7 +136,7 @@ class TXCWSweep():
                                                     )
 
         if self.settings.psu_present:
-            self.psu = pyPSU.PSU(self.settings.psu_address)
+            self.psu = pyPSU.PSU(self.settings.psu_address,logger_settings = self.settings.psu_logger_settings)
             self.psu.selectOutput(1)
             self.psu.toggleOutput(True)
             self.psu.setVoltage(self.settings.pavdd_max)
@@ -169,7 +146,7 @@ class TXCWSweep():
             self.settings.pavdd_max = max(self.settings.pavdd_levels)
 
     def initialize_specan(self):
-        self.specan = SpecAn(resource=self.settings.specan_address)
+        self.specan = SpecAn(resource=self.settings.specan_address,logger_settings=self.settings.specan_logger_settings)
         self.specan.updateDisplay(on_off=True)
         self.specan.setMode('single')
         self.specan.setSpan(self.settings.specan_span_hz)
@@ -179,11 +156,11 @@ class TXCWSweep():
         self.specan.setRefOffset(self.settings.specan_ref_offset)
 
     def initialize_wstk(self):
-        self.wstk = WSTK_RAILTest_Driver(self.settings.wstk_com_port)
+        self.wstk = WSTK_RAILTest_Driver(self.settings.wstk_com_port,logger_settings=self.settings.wstk_logger_settings)
 
         self.wstk.reset()
-        self.wstk.rx(on_off=False, echo=self.settings.wstk_echo)
-        self.wstk.setTxTone(on_off=True, mode="CW",  echo=self.settings.wstk_echo)
+        self.wstk.rx(on_off=False)
+        self.wstk.setTxTone(on_off=True, mode="CW")
 
         if self.settings.freq_list_hz is None:
             self.settings.freq_list_hz = np.linspace(
@@ -197,8 +174,8 @@ class TXCWSweep():
 
     def initialize_reporter(self):
         timestamp = dt.now().timestamp()
-        workbook_name = self.board_name + '_Raw_PAVDD_Freq_vs_Power-Harmonic-Current_results_'+str(int(timestamp))+'.xlsx'
-        self.workbook = xlsxwriter.Workbook(workbook_name)
+        self.workbook_name = self.board_name + '_Raw_PAVDD_Freq_vs_Power-Harmonic-Current_results_'+str(int(timestamp))+'.xlsx'
+        self.workbook = xlsxwriter.Workbook(self.workbook_name)
         self.sheet_sum = self.workbook.add_worksheet('Summary')
         self.sheet_sum.write(0, 0, 'Chip name: ' + self.chip_name)
         self.sheet_sum.write(1, 0, 'Board name: ' + self.board_name)
@@ -235,10 +212,10 @@ class TXCWSweep():
     def initiate(self):
         for freq in self.settings.freq_list_hz:
 
-            self.wstk.setTxTone(on_off=False, mode="CW", echo=self.settings.wstk_echo)
-            self.wstk.setDebugMode(on_off=True, echo=self.settings.wstk_echo)
-            self.wstk.freqOverride(freq, echo=self.settings.wstk_echo)
-            self.wstk.setTxTone(on_off=True, mode="CW", echo=self.settings.wstk_echo)
+            self.wstk.setTxTone(on_off=False, mode="CW")
+            self.wstk.setDebugMode(on_off=True)
+            self.wstk.freqOverride(freq)
+            self.wstk.setTxTone(on_off=True, mode="CW")
 
             for pavdd in self.settings.pavdd_levels:
                 if self.settings.psu_present:
@@ -261,17 +238,15 @@ class TXCWSweep():
                     
                     while n <= self.settings.harm_order_up_to:
                         
-                        wstk_echo = False
-
                         self.specan.setFrequency(n * freq)
 
                     
                         measured_power = np.empty(len(self.settings.pwr_levels))
 
                         
-                        self.wstk.setTxTone(on_off=False, mode="CW", echo=wstk_echo)
-                        self.wstk.setPower(value=pl, format='raw', echo=wstk_echo)
-                        self.wstk.setTxTone(on_off=True, mode="CW", echo=wstk_echo)
+                        self.wstk.setTxTone(on_off=False, mode="CW")
+                        self.wstk.setPower(value=pl, format='raw')
+                        self.wstk.setTxTone(on_off=True, mode="CW")
                         self.specan.initiate()
                         marker = self.specan.getMaxMarker()
                         measured_power[k] = marker.value
@@ -294,7 +269,7 @@ class TXCWSweep():
 
                     record_df = pd.DataFrame(tx_measurement_record,index=[0])
                     record_df.to_csv(self.backup_csv_filename, mode='a', header=not path.exists(self.backup_csv_filename),index=False)
-                    self.logger.debug("\n"+record_df.to_string())
+                    self.logger.info("\n"+record_df.to_string())
                 voltage = np.empty(len(self.settings.pwr_levels))
                 freqs_sheet = np.empty(len(self.settings.pwr_levels))
                 for i in range(len(self.settings.pwr_levels)):
@@ -310,11 +285,19 @@ class TXCWSweep():
                 self.row = self.row + len(self.settings.pwr_levels) 
 
     def stop(self):
-        self.workbook.close()
-        self.wstk.setTxTone(on_off=False, mode="CW", echo=self.settings.wstk_echo)
-        sleep(0.1)
+        # if workbook already exists no need to close again
+        if not path.isfile(self.workbook_name):
+            self.logger.info("excel workbook closed")
+            self.workbook.close()
+
         if self.settings.psu_present:
-            self.psu.toggleOutput(False)
+            try:
+                self.psu.toggleOutput(False)
+            # if someone already closed the visa session
+            except visaerrors.InvalidSession:
+                self.psu.logger.handlers.clear() # clear psu logger otherwise it will duplicate log
+                self.initialize_psu() #reinitialize psu session, ugly I know, sorry
+                self.psu.toggleOutput(False) # turn off output
 
     @staticmethod
     def get_dataframe(dataframe_filename:str,index_col:list = [0,1,2])->pd.DataFrame:
