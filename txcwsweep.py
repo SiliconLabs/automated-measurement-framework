@@ -119,6 +119,9 @@ class TXCWSweep():
         self.chip_name = chip_name
         self.board_name = board_name
 
+        timestamp = dt.now().timestamp()
+        self.workbook_name = self.board_name + '_Raw_PAVDD_Freq_vs_Power-Harmonic-Current_results_'+str(int(timestamp))+'.xlsx'
+
         if self.settings.logger_settings.module_name is None:
             self.settings.logger_settings.module_name = __name__
 
@@ -134,13 +137,13 @@ class TXCWSweep():
                                                     self.settings.pavdd_num_steps,
                                                     dtype=float
                                                     )
-
+        else:
+            self.settings.pavdd_max = max(self.settings.pavdd_levels)
         if self.settings.psu_present:
             self.psu = pyPSU.PSU(self.settings.psu_address,logger_settings = self.settings.psu_logger_settings)
             self.psu.selectOutput(1)
             self.psu.toggleOutput(True)
             self.psu.setVoltage(self.settings.pavdd_max)
-            sleep(0.1)
         else:
             self.settings.pavdd_levels = [3.3]
             self.settings.pavdd_max = max(self.settings.pavdd_levels)
@@ -173,8 +176,6 @@ class TXCWSweep():
             self.settings.pwr_levels = np.linspace(self.settings.min_pwr_state, self.settings.max_pwr_state, self.settings.pwr_num_steps, dtype=int)
 
     def initialize_reporter(self):
-        timestamp = dt.now().timestamp()
-        self.workbook_name = self.board_name + '_Raw_PAVDD_Freq_vs_Power-Harmonic-Current_results_'+str(int(timestamp))+'.xlsx'
         self.workbook = xlsxwriter.Workbook(self.workbook_name)
         self.sheet_sum = self.workbook.add_worksheet('Summary')
         self.sheet_sum.write(0, 0, 'Chip name: ' + self.chip_name)
@@ -288,17 +289,22 @@ class TXCWSweep():
         # if workbook already exists no need to close again
         if not path.isfile(self.workbook_name):
             self.logger.info("excel workbook closed")
-            self.workbook.close()
+            if hasattr(self,'workbook'):
+                self.workbook.close()
 
         if self.settings.psu_present:
             try:
-                self.psu.toggleOutput(False)
+                if hasattr(self,'psu'):
+                    self.psu.toggleOutput(False)
+                    self.psu.logger.handlers.clear()
+                    del self.psu
             # if someone already closed the visa session
             except visaerrors.InvalidSession:
                 self.psu.logger.handlers.clear() # clear psu logger otherwise it will duplicate log
                 self.initialize_psu() #reinitialize psu session, ugly I know, sorry
                 self.psu.toggleOutput(False) # turn off output
-
+                self.psu.logger.handlers.clear()
+                del self.psu
     @staticmethod
     def get_dataframe(dataframe_filename:str,index_col:list = [0,1,2])->pd.DataFrame:
         """
