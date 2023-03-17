@@ -95,7 +95,7 @@ class TXCWSweep():
         specan_rbw_hz: int = 1e6
         specan_ref_level_dbm: int = 20
         specan_detector_type: str = "NORM"
-        specan_ref_offset: float = 0.3
+        specan_ref_offset: float = 0
         specan_logger_settings: lg.Logger.Settings = lg.Logger.Settings()
 
         #WSTK settings
