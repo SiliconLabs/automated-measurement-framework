@@ -3,3 +3,7 @@ venv/
 local_python_env/
 .python-version
 app.log
+*.xlsx
+*.csv
+*.egg-info
+build/

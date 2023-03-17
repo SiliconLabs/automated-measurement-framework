@@ -1,6 +1,7 @@
 from pywstk import pyRAIL
 import time
-from pySigGen import pySigGen
+from pysiggen.pySigGen import SigGen
+from pysiggen.pySigGen import SigGenSettings
 import serial
 import numpy as np
 import xlsxwriter
@@ -17,9 +18,9 @@ start_power_dBm = -84.5
 stop_power_dBm = -112.5
 power_steps = 113
 
-siggen = pySigGen.SigGen("GPIB0::5::INSTR") #this can change, run pyvisa-shell list command in cmd to find current address
+siggen = SigGen("GPIB0::5::INSTR") #this can change, run pyvisa-shell list command in cmd to find current address
 siggen.getError()
-settings = pySigGen.SigGenSettings()
+settings = SigGenSettings()
 settings.frequency_Hz = freqs[0]
 settings.amplitude_dBm = start_power_dBm
 settings.modulation.type = "FSK2" #see all modulation abbrevations at page 299 of https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf
