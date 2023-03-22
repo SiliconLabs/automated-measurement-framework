@@ -105,4 +105,4 @@ if ($mode -eq "comp"){
 Print "===================Finished==================="
 Print "=============================================="
 Print "Virtual Enviroment active, to quit execute 'deactivate'"
-Print "To reactivate, execute '.\$local_python_dir\$venv_path\Scripts\activate' "
+Print "To reactivate, execute 'activate_enviroment.ps1' "

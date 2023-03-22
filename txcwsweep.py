@@ -12,7 +12,7 @@ from excel_plotter.Py_to_Excel_plotter import Py_to_Excel_plotter
 import pandas as pd
 from os import remove,path
 from dataclasses import dataclass
-from common import logger as lg
+from common import Logger, Level
 import atexit
 from pyvisa import errors as visaerrors
 
@@ -72,7 +72,7 @@ class TXCWSweep():
         freq_list_hz: list|None = None
         harm_order_up_to: int = 3
 
-        logger_settings: lg.Logger.Settings = lg.Logger.Settings()
+        logger_settings: Logger.Settings = Logger.Settings()
 
         #Supply settings
         psu_present: bool = False
@@ -81,7 +81,7 @@ class TXCWSweep():
         pavdd_max: float = 3.6
         pavdd_num_steps: int = 4
         pavdd_levels: list|None = None
-        psu_logger_settings: lg.Logger.Settings = lg.Logger.Settings()
+        psu_logger_settings: Logger.Settings = Logger.Settings()
         
         #Power settings
         min_pwr_state: int = 0 
@@ -96,11 +96,11 @@ class TXCWSweep():
         specan_ref_level_dbm: int = 20
         specan_detector_type: str = "NORM"
         specan_ref_offset: float = 0
-        specan_logger_settings: lg.Logger.Settings = lg.Logger.Settings()
+        specan_logger_settings: Logger.Settings = Logger.Settings()
 
         #WSTK settings
         wstk_com_port: str = ""
-        wstk_logger_settings: lg.Logger.Settings = lg.Logger.Settings()
+        wstk_logger_settings: Logger.Settings = Logger.Settings()
 
         # Tested chip and board names 
 
@@ -125,7 +125,7 @@ class TXCWSweep():
         if self.settings.logger_settings.module_name is None:
             self.settings.logger_settings.module_name = __name__
 
-        self.logger = lg.Logger(self.settings.logger_settings)
+        self.logger = Logger(self.settings.logger_settings)
         atexit.register(self.__del__)
 
 
