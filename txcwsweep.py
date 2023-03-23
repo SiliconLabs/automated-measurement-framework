@@ -88,6 +88,7 @@ class TXCWSweep():
         max_pwr_state: int = 240
         pwr_num_steps: int = 24
         pwr_levels: list|None = None
+        pwr_format:str = 'raw'
         
         #SA settings 
         specan_address: str = 'TCPIP::169.254.250.234::INSTR'
@@ -150,6 +151,7 @@ class TXCWSweep():
 
     def initialize_specan(self):
         self.specan = SpecAn(resource=self.settings.specan_address,logger_settings=self.settings.specan_logger_settings)
+        self.specan.reset()
         self.specan.updateDisplay(on_off=True)
         self.specan.setMode('single')
         self.specan.setSpan(self.settings.specan_span_hz)
@@ -246,7 +248,7 @@ class TXCWSweep():
 
                         
                         self.wstk.setTxTone(on_off=False, mode="CW")
-                        self.wstk.setPower(value=pl, format='raw')
+                        self.wstk.setPower(value=pl, format=self.settings.pwr_format)
                         self.wstk.setTxTone(on_off=True, mode="CW")
                         self.specan.initiate()
                         marker = self.specan.getMaxMarker()
@@ -329,6 +331,7 @@ class TXCWSweep():
         :return: The measured data
         :rtype: pandas.DataFrame
         """
+        
         self.initialize_psu()
         self.initialize_specan()
         self.initialize_wstk()
