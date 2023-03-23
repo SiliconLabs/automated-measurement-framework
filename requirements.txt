@@ -12,3 +12,4 @@ PyVISA==1.12.0
 PyVISA-py==0.5.3
 RsInstrument==1.50.0.90
 XlsxWriter==3.0.3
+common==1.0.0
