@@ -4,7 +4,7 @@ from time import sleep
 from pysiggen.pySigGen import SigGen
 from pysiggen.pySigGen import SigGenSettings
 from pyspecan.pySpecAn import SpecAn
-from common import logger as lg
+from common import Logger, Level
 import serial
 import numpy as np
 import xlsxwriter
@@ -43,7 +43,8 @@ settings.custom_on = True
 siggen.setStream(settings)
 #print(settings)
 
-specan = SpecAn("TCPIP::169.254.88.77::INSTR", auto_detect=False,logger_settings=lg.Logger.Settings(logging_level=lg.Level.INFO))
+specan = SpecAn("TCPIP::169.254.88.77::INSTR", auto_detect=True,logger_settings=Logger.Settings(logging_level=Level.INFO))
+specan.reset()
 specan.setAppSwitch("SG")
 #specan.initiate()
 specan.setSigGenFreq_Hz(desired_freqs[0] + blocker_offset_freqs[0])
