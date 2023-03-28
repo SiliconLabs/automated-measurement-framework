@@ -17,6 +17,9 @@ from dataclasses import dataclass
 from common import Logger, Level
 import atexit
 from pyvisa import errors as visaerrors
+import serial
+from ctune_w_siggen import ctune_sg
+from ctune_w_sa import ctune_sa
 
 
 class Sensitivity():
@@ -60,7 +63,11 @@ class Sensitivity():
         #Cable attenutation setting
         cable_attenuation_dB: float = 2
         cable_logger_settings: Logger.Settings = Logger.Settings()
-                
+        
+        #sensitivity measurements with CTUNE
+        measure_with_CTUNE_w_SA: bool = False
+        measure_with_CTUNE_w_SG: bool = False
+
         #SG settings 
         siggen_address: str = 'GPIB0::5::INSTR'
         siggen_power_start_dBm: float = -80
@@ -77,6 +84,15 @@ class Sensitivity():
         siggen_filter_BbT = 0.5
         siggen_custom_on = True
         siggen_logger_settings: Logger.Settings = Logger.Settings()
+
+        #SA settings
+        specan_address: str = 'TCPIP::169.254.88.77::INSTR'
+        specan_span_hz: int = 200e3
+        specan_rbw_hz: int = 10e3
+        specan_ref_level_dbm: int = 20
+        specan_detector_type: str = "NORM"
+        specan_ref_offset: float = 0
+        specan_logger_settings: Logger.Settings = Logger.Settings()
 
         #WSTK settings
         wstk_com_port: str = ""
@@ -119,8 +135,8 @@ class Sensitivity():
         self.siggen.setFilterBbT(self.settings.siggen_filter_BbT)
         self.siggen.setStreamType(self.settings.siggen_stream_type)
         self.siggen.toggleCustom(self.settings.siggen_custom_on)
-        self.siggen.toggleModulation(True)
-        self.siggen.toggleRFOut(True)
+        self.siggen.toggleModulation(False)
+        self.siggen.toggleRFOut(False)
         if self.settings.siggen_power_list_dBm is None:
             self.settings.siggen_power_list_dBm = np.linspace(
                                                     self.settings.siggen_power_start_dBm,
@@ -129,6 +145,17 @@ class Sensitivity():
                                                     dtype=float
                                                     )
 
+    def initialize_specan(self):
+        self.specan = SpecAn(resource=self.settings.specan_address,logger_settings=self.settings.specan_logger_settings)
+        self.specan.reset()
+        self.specan.updateDisplay(on_off=True)
+        self.specan.setMode('CONTINUOUS')
+        self.specan.setSpan(self.settings.specan_span_hz)
+        self.specan.setRBW(self.settings.specan_rbw_hz)
+        self.specan.setRefLevel(self.settings.specan_ref_level_dbm)
+        self.specan.setDetector(self.settings.specan_detector_type)
+        self.specan.setRefOffset(self.settings.specan_ref_offset)
+    
     def initialize_wstk(self):
         self.wstk = WSTK_RAILTest(self.settings.wstk_com_port,logger_settings=self.settings.wstk_logger_settings)
 
@@ -170,6 +197,7 @@ class Sensitivity():
         self.sheet_sensdata.write(0, 0, 'Frequency [MHz]')
         self.sheet_sensdata.write(0, 1, 'Sensitivity [dBm]')
         self.sheet_sensdata.write(0, 2, 'BER [%]')
+        self.sheet_sensdata.write(0, 3, 'RSSI')
 
         self.row = 1
 
@@ -180,9 +208,14 @@ class Sensitivity():
             remove(self.backup_csv_filename)
 
     def initiate(self):
-
+        
+        self.siggen.toggleModulation(True)
+        self.siggen.toggleRFOut(True)
         i = 1
         j = 1
+        global ber_success
+        ber_success = True
+
         for freq in self.settings.freq_list_hz:
 
             self.siggen.setFrequency(freq)
@@ -205,6 +238,11 @@ class Sensitivity():
 
                 self.siggen.setAmplitude(siggen_power)
                 ber_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=freq)
+
+                if i == 1 and done_percent == 0 and rssi == 0:
+                    print("BER measurement failed!")
+                    ber_success = False
+                    break
 
                 rx_raw_measurement_record['Input Power [dBm]'] = siggen_power-self.settings.cable_attenuation_dB
                 rx_raw_measurement_record['BER [%]'] = ber_percent
@@ -236,7 +274,229 @@ class Sensitivity():
 
         self.wstk._driver.reset()
  
+    def ctune_w_sa(self):
 
+        # self.initialize_siggen()
+        # self.initialize_wstk()
+
+        freq = self.settings.freq_list_hz[0]
+        ctune_init = 120
+        pwr_raw = 200
+
+        self.initialize_specan()
+        #sleep(0.1)
+        self.specan.setFrequency(freq)
+        sleep(0.1)
+
+        ctune_min = 0
+        ctune_max = 255
+        ctune_steps = 20
+        fine_error_Hz = 5000
+
+        ctune_range = np.linspace(ctune_min, ctune_max, ctune_steps, dtype=int)
+        global ctuned
+        self.wstk._driver.setCtune(ctune_init)
+        self.wstk.transmit(mode="CW", frequency_Hz=freq, power_dBm=pwr_raw, power_format="RAW")
+        self.wstk._driver.setTxTone(on_off=True, mode="cw")
+        sleep(0.2)
+        marker_freq = self.specan.getMaxMarker().position
+        
+        if (marker_freq - freq) < fine_error_Hz and (marker_freq - freq) > -fine_error_Hz:
+            
+            if (marker_freq - freq) == 0:
+                ctuned = ctune_init
+
+            elif (marker_freq - freq) > 0:
+                ctune_range_fine = np.linspace(ctune_init, ctune_max, ctune_max-ctune_init+1, dtype=int)
+                ctune_array = []
+                marker_array = []
+                i = 0
+                for ctune_item_fine in ctune_range_fine:
+                    ctune_actual_fine = ctune_item_fine
+                    self.wstk._driver.setTxTone(on_off=False, mode="cw")
+                    self.wstk._driver.setCtune(ctune_actual_fine)
+                    self.wstk._driver.setTxTone(on_off=True, mode="cw")
+                    ctune_array.append(ctune_actual_fine)
+                    sleep(0.2)
+                    marker_freq_actual_fine = self.specan.getMaxMarker().position
+                    marker_array.append(marker_freq_actual_fine)
+                                
+                    if (marker_freq_actual_fine - freq) <= 0 and (freq - marker_freq_actual_fine) < (marker_array[i-1] - freq):
+                        marker_freq = marker_freq_actual_fine
+                        ctuned = ctune_actual_fine
+                        
+                        break
+
+                    if (marker_freq_actual_fine - freq) <= 0 and (freq - marker_freq_actual_fine) >= (marker_array[i-1] - freq):
+                        marker_freq = marker_array[i-1]
+                        ctuned = ctune_array[i-1]
+                        
+                        break
+
+                    i += 1
+
+            elif (marker_freq - freq) < 0:
+                ctune_range_fine = np.linspace(ctune_init, 0, ctune_init+1, dtype=int)
+                ctune_array = []
+                marker_array = []
+                i = 0
+                for ctune_item_fine in ctune_range_fine:
+                    ctune_actual_fine = ctune_item_fine
+                    self.wstk._driver.setTxTone(on_off=False, mode="cw")
+                    self.wstk._driver.setCtune(ctune_actual_fine)
+                    self.wstk._driver.setTxTone(on_off=True, mode="cw")
+                    ctune_array.append(ctune_actual_fine)
+                    sleep(0.2)
+                    marker_freq_actual_fine = self.specan.getMaxMarker().position
+                    marker_array.append(marker_freq_actual_fine)
+                
+                    if (marker_freq_actual_fine - freq) >= 0 and (marker_freq_actual_fine - freq) < (freq - marker_array[i-1]):
+                        marker_freq = marker_freq_actual_fine
+                        ctuned = ctune_actual_fine
+                        
+                        break
+
+                    if (marker_freq_actual_fine - freq) >= 0 and (marker_freq_actual_fine - freq) >= (freq - marker_array[i-1]):
+                        marker_freq = marker_array[i-1]
+                        ctuned = ctune_array[i-1]
+                        
+                        break
+
+                    i += 1
+            
+        else:
+            for ctune_item in ctune_range:
+                ctune_actual = ctune_item
+                self.wstk._driver.setTxTone(on_off=False, mode="cw")
+                self.wstk._driver.setCtune(ctune_actual)
+                self.wstk._driver.setTxTone(on_off=True, mode="cw")
+                sleep(0.2)
+                marker_freq_actual = self.specan.getMaxMarker().position
+            
+                if (marker_freq_actual - freq) < fine_error_Hz and (marker_freq_actual - freq) > -fine_error_Hz:
+                    
+                    if (marker_freq_actual - freq) == 0:
+                        ctuned = ctune_actual
+                        marker_freq = marker_freq_actual
+
+                        break
+
+                    elif (marker_freq_actual - freq) > 0:
+                        ctune_range_fine = np.linspace(ctune_actual, ctune_max, ctune_max-ctune_actual+1, dtype=int)
+                        ctune_array = []
+                        marker_array = []
+                        i = 0
+                        for ctune_item_fine in ctune_range_fine:
+                            ctune_actual_fine = ctune_item_fine
+                            self.wstk._driver.setTxTone(on_off=False, mode="cw")
+                            self.wstk._driver.setCtune(ctune_actual_fine)
+                            self.wstk._driver.setTxTone(on_off=True, mode="cw")
+                            ctune_array.append(ctune_actual_fine)
+                            sleep(0.2)
+                            marker_freq_actual_fine = self.specan.getMaxMarker().position
+                            marker_array.append(marker_freq_actual_fine)
+                        
+                            if (marker_freq_actual_fine - freq) <= 0 and (freq - marker_freq_actual_fine) < (marker_array[i-1] - freq):
+                                marker_freq = marker_freq_actual_fine
+                                ctuned = ctune_actual_fine
+
+                                break
+
+                            if (marker_freq_actual_fine - freq) <= 0 and (freq - marker_freq_actual_fine) >= (marker_array[i-1] - freq):
+                                marker_freq = marker_array[i-1]
+                                ctuned = ctune_array[i-1]
+                        
+                                break
+
+                            i += 1
+
+                    elif (marker_freq_actual - freq) < 0:
+                        ctune_range_fine = np.linspace(ctune_actual, 0, ctune_actual+1, dtype=int)
+                        ctune_array = []
+                        marker_array = []
+                        i = 0
+                        for ctune_item_fine in ctune_range_fine:
+                            ctune_actual_fine = ctune_item_fine
+                            self.wstk._driver.setTxTone(on_off=False, mode="cw")
+                            self.wstk._driver.setCtune(ctune_actual_fine)
+                            self.wstk._driver.setTxTone(on_off=True, mode="cw")
+                            ctune_array.append(ctune_actual_fine)
+                            sleep(0.2)
+                            marker_freq_actual_fine = self.specan.getMaxMarker().position
+                            marker_array.append(marker_freq_actual_fine)
+                        
+                            if (marker_freq_actual_fine - freq) >= 0 and (marker_freq_actual_fine - freq) < (freq - marker_array[i-1]):
+                                marker_freq = marker_freq_actual_fine
+                                ctuned = ctune_actual_fine
+                        
+                                break
+
+                            if (marker_freq_actual_fine - freq) >= 0 and (marker_freq_actual_fine - freq) >= (freq - marker_array[i-1]):
+                                marker_freq = marker_array[i-1]
+                                ctuned = ctune_array[i-1]
+                        
+                                break
+
+                            i += 1
+                    
+                    break
+        
+        self.wstk._driver.setTxTone(on_off=False, mode="cw") 
+        self.wstk._driver.reset()
+        self.wstk._driver.rx(on_off=False)
+        self.wstk._driver.setCtune(ctuned)
+        print("Tuned CTUNE value: " + str(ctuned))
+        print("Actual DUT frequency: " + str(marker_freq) + " Hz")
+        print("Frequency error: " + str(marker_freq - freq) + " Hz")
+        print('\n')
+    
+    def ctune_w_sg(self):
+
+        # self.initialize_siggen()
+        # self.initialize_wstk()
+        ctune_init = 120
+        ctune_min = 0
+        ctune_max = 255
+        freq = self.settings.freq_list_hz[0]
+
+        self.siggen.setFrequency(freq)
+        self.siggen.setAmplitude(-30)
+        self.siggen.toggleModulation(True)
+        self.siggen.toggleRFOut(True)
+
+        self.wstk.receive(on_off=True, frequency_Hz=freq, timeout_ms=1000)
+        sleep(0.1)
+        self.wstk._driver.rx(False)
+        self.wstk._driver.setCtune(ctune_init)
+        self.wstk._driver.rx(True)
+        RSSI_max = self.wstk.readRSSI()
+        ctuned = ctune_init
+        #ctuned = wstk._driver.getCtune()
+        ctune_range = np.linspace(ctune_min, ctune_max, ctune_max-ctune_min+1, dtype=int)
+        
+        for ctune_item in ctune_range:
+            ctune_actual = ctune_item
+            self.wstk._driver.rx(False)
+            self.wstk._driver.setCtune(ctune_actual)
+            self.wstk._driver.rx(True)
+            RSSI_actual = self.wstk.readRSSI()
+            print(ctune_actual)
+            print(RSSI_actual)
+            if RSSI_actual > RSSI_max:
+                RSSI_max = RSSI_actual
+                ctuned = ctune_actual
+
+        self.siggen.toggleModulation(False)
+        self.siggen.toggleRFOut(False)
+
+        self.wstk._driver.reset()
+        self.wstk._driver.rx(on_off=False)
+        self.wstk._driver.setCtune(ctuned)
+
+        print("Tuned CTUNE value: " + str(ctuned))
+        print("Max RSSI: " + str(RSSI_max) + " dBm")
+        print('\n')
+    
     def stop(self):
         # if workbook already exists no need to close again
         if not path.isfile(self.workbook_name):
@@ -287,15 +547,22 @@ class Sensitivity():
         self.initialize_wstk()
         self.initialize_reporter()
 
+        if self.settings.measure_with_CTUNE_w_SA:
+            self.ctune_w_sa()
+
+        if self.settings.measure_with_CTUNE_w_SG:
+            self.ctune_w_sg()
+
         self.initiate()
 
         self.stop()
 
-        df = self.get_dataframe(self.backup_csv_filename)
-        self.logger.debug(df.to_string())
-        self.logger.info("\nDone with measurements")
+        if ber_success:
+            df = self.get_dataframe(self.backup_csv_filename)
+            self.logger.debug(df.to_string())
+            self.logger.info("\nDone with measurements")
 
-        return df
-    
+            return df
+       
     def __del__(self):
         self.stop()

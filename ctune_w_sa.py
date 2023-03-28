@@ -7,7 +7,7 @@ from common import logger as lg
 import serial
 import numpy as np
 
-def ctune(frequency:float, ctune_initial:int, power_raw:float, SA_Span:float, SA_RBW:float)->float:
+def ctune_sa(frequency:float, ctune_initial:int, power_raw:float, SA_Span:float, SA_RBW:float)->float:
 
     #specan = SpecAn("TCPIP::169.254.23.5::INSTR", auto_detect=False,logger_settings=lg.Logger.Settings(logging_level=lg.Level.INFO))
     specan = SpecAn("TCPIP::169.254.88.77::INSTR", auto_detect=False,logger_settings=lg.Logger.Settings(logging_level=lg.Level.INFO))
