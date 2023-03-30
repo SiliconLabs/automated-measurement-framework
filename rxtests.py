@@ -105,7 +105,7 @@ class Sensitivity():
         """
         Initialize measurement class
 
-        :param Settings settings: TXCWSweep.Settings dataclass containing all the configuration
+        :param Settings settings: Settings dataclass containing all the configuration
         :param str chip_name : Name of IC being tested, only used in reporting
         :param str board_name: Name of board, containg the IC, only used in reporting
         :param str logfile_name: If initialized, separate logfile will be created for this measurement
@@ -275,9 +275,6 @@ class Sensitivity():
         self.wstk._driver.reset()
  
     def ctune_w_sa(self):
-
-        # self.initialize_siggen()
-        # self.initialize_wstk()
 
         freq = self.settings.freq_list_hz[0]
         ctune_init = 120
@@ -452,8 +449,6 @@ class Sensitivity():
     
     def ctune_w_sg(self):
 
-        # self.initialize_siggen()
-        # self.initialize_wstk()
         ctune_init = 120
         ctune_min = 0
         ctune_max = 255
@@ -471,7 +466,6 @@ class Sensitivity():
         self.wstk._driver.rx(True)
         RSSI_max = self.wstk.readRSSI()
         ctuned = ctune_init
-        #ctuned = wstk._driver.getCtune()
         ctune_range = np.linspace(ctune_min, ctune_max, ctune_max-ctune_min+1, dtype=int)
         
         for ctune_item in ctune_range:
@@ -519,6 +513,18 @@ class Sensitivity():
             self.siggen.logger.handlers.clear()
             del self.siggen
 
+        try:
+            if hasattr(self,'wstk'):
+                self.wstk._driver.reset()
+                self.wstk.logger.handlers.clear()
+                del self.wstk
+        # if someone already closed the visa session
+        except visaerrors.InvalidSession:
+            self.wstk.logger.handlers.clear() 
+            self.wstk._driver.reset()
+            self.wstk.logger.handlers.clear()
+            del self.wstk  
+
     @staticmethod
     def get_dataframe(dataframe_filename:str,index_col:list = [0,1,2])->pd.DataFrame:
         """
@@ -547,8 +553,321 @@ class Sensitivity():
         self.initialize_wstk()
         self.initialize_reporter()
 
+        if (self.settings.siggen_power_list_dBm[0] - self.settings.cable_attenuation_dB) > 10:
+            raise ValueError("Too high input power injected!")
+
         if self.settings.measure_with_CTUNE_w_SA:
             self.ctune_w_sa()
+
+        if self.settings.measure_with_CTUNE_w_SG:
+            self.ctune_w_sg()
+
+        self.initiate()
+
+        self.stop()
+
+        if ber_success:
+            df = self.get_dataframe(self.backup_csv_filename)
+            self.logger.debug(df.to_string())
+            self.logger.info("\nDone with measurements")
+
+            return df
+       
+    def __del__(self):
+        self.stop()
+
+
+class Blocking(Sensitivity):
+    
+    @dataclass
+    class Settings(Sensitivity.Settings):
+
+        desired_power_relative_to_sens_during_blocking_test_dB: float = 3  #blocking test when desired power is above the senitivity level by this value
+        
+        blocker_offset_start_freq_Hz: int = -8e6   
+        blocker_offset_stop_freq_Hz: int = 8e6     
+        blocker_offset_freq_steps: int = 5
+        blocker_offset_freq_list_Hz: list|None = None
+
+        blocker_cable_attenuation_dB: float = 7
+
+        blocker_start_power_dBm: float = -43   #without the cable attenution
+        blocker_stop_power_dBm: float = -3     #without the cable attenution
+        blocker_power_steps: int = 41
+        blocker_power_list_dBm: list|None = None
+        blocker_logger_settings: Logger.Settings = Logger.Settings()
+                
+
+    def __init__(self,settings:Settings,chip_name:str,board_name:str):
+        """
+        Initialize measurement class
+
+        :param Settings settings: Settings dataclass containing all the configuration
+        :param str chip_name : Name of IC being tested, only used in reporting
+        :param str board_name: Name of board, containg the IC, only used in reporting
+        :param str logfile_name: If initialized, separate logfile will be created for this measurement
+        :param bool console_logging: Enable console logging, True by default
+        """
+        self.settings = settings
+        self.chip_name = chip_name
+        self.board_name = board_name
+
+        timestamp = dt.now().timestamp()
+        self.workbook_name = self.board_name + '_Blocking_results_'+str(int(timestamp))+'.xlsx'
+
+        if self.settings.logger_settings.module_name is None:
+            self.settings.logger_settings.module_name = __name__
+
+        self.logger = Logger(self.settings.logger_settings)
+        atexit.register(self.__del__)
+
+    def initialize_specan_Generator(self):
+        self.specan = SpecAn(resource=self.settings.specan_address,logger_settings=self.settings.specan_logger_settings)
+        self.specan.reset()
+        self.specan.updateDisplay(on_off=True)
+        self.specan.setAppSwitch("SG")
+        self.specan.setSigGenFreq_Hz(self.settings.freq_list_hz[0] + self.settings.blocker_offset_start_freq_Hz)
+        self.specan.setSigGenPower_dBm(self.settings.blocker_start_power_dBm)
+        self.specan.setSigGenOutput_toggle(on_off=False) 
+        if self.settings.blocker_power_list_dBm is None:
+            self.settings.blocker_power_list_dBm = np.linspace(
+                                                    self.settings.blocker_start_power_dBm,
+                                                    self.settings.blocker_stop_power_dBm,
+                                                    self.settings.blocker_power_steps,
+                                                    dtype=float
+                                                    )
+        if self.settings.blocker_offset_freq_list_Hz is None:
+            self.settings.blocker_offset_freq_list_Hz = np.linspace(
+                                                    self.settings.blocker_offset_start_freq_Hz,
+                                                    self.settings.blocker_offset_stop_freq_Hz,
+                                                    self.settings.blocker_offset_freq_steps,
+                                                    dtype=float
+                                                    )
+    
+    def initialize_reporter(self):
+        self.workbook = xlsxwriter.Workbook(self.workbook_name)
+
+        self.sheet_sum = self.workbook.add_worksheet('Summary')
+        self.sheet_sum.write(0, 0, 'Chip name: ' + self.chip_name)
+        self.sheet_sum.write(1, 0, 'Board name: ' + self.board_name)
+
+        self.sheet_parameters = self.workbook.add_worksheet('Parameters')
+        self.sheet_parameters.write(0, 0, 'Modulation')
+        self.sheet_parameters.write(0, 1, 'Data Rate [kbps]')
+        self.sheet_parameters.write(0, 2, 'Deviation [kHz]')
+        self.sheet_parameters.write(0, 3, 'BbT')
+        self.sheet_parameters.write(0, 4, 'Blocker Signal')
+        self.sheet_parameters.write(1, 0, self.settings.siggen_modulation_type)
+        self.sheet_parameters.write(1, 1, self.settings.siggen_modulation_symbolrate_sps / 1e3)
+        self.sheet_parameters.write(1, 2, self.settings.siggen_modulation_deviation_Hz / 1e3)
+        self.sheet_parameters.write(1, 3, self.settings.siggen_filter_BbT)
+        self.sheet_parameters.write(1, 4, 'CW')
+
+        self.sheet_rawdata = self.workbook.add_worksheet('RawData')
+        self.sheet_rawdata.write(0, 0, 'Frequency [MHz]')
+        self.sheet_rawdata.write(0, 1, 'Input Power [dBm]')
+        self.sheet_rawdata.write(0, 2, 'BER [%]')
+        self.sheet_rawdata.write(0, 3, 'RSSI')
+        self.sheet_rawdata.write(0, 4, 'Blocker Freq. Offset [MHz]')
+        self.sheet_rawdata.write(0, 5, 'Blocker Abs. Power [dBm]')
+        
+        self.sheet_sensdata = self.workbook.add_worksheet('SensData')
+        self.sheet_sensdata.write(0, 0, 'Frequency [MHz]')
+        self.sheet_sensdata.write(0, 1, 'Sensitivity [dBm]')
+        self.sheet_sensdata.write(0, 2, 'BER [%]')
+        self.sheet_sensdata.write(0, 3, 'RSSI')
+
+        self.sheet_blockingdata = self.workbook.add_worksheet('BlockingData')
+        self.sheet_blockingdata.write(0, 0, 'Frequency [MHz]')
+        self.sheet_blockingdata.write(0, 1, 'Input Power [dBm]')
+        self.sheet_blockingdata.write(0, 2, 'Blocker Freq. Offset [MHz]')
+        self.sheet_blockingdata.write(0, 3, 'Blocker Abs. Power [dBm]')
+        self.sheet_blockingdata.write(0, 4, 'BER [%]')
+
+        self.row = 1
+
+        self.backup_csv_filename = "backup_csv_blocking_raw.csv"
+
+        if path.exists(self.backup_csv_filename):
+            remove(self.backup_csv_filename)
+
+    def initiate(self):
+        
+        self.siggen.toggleModulation(True)
+        self.siggen.toggleRFOut(True)
+        global ber_success
+        ber_success = True
+        i = 1
+        j = 1
+        k = 1
+
+        for frequency in self.settings.freq_list_hz:
+            
+            self.siggen.setFrequency(frequency)
+
+            blocking_raw_measurement_record = {
+                    'Frequency [MHz]':frequency/1e6,
+                    'Input Power [dBm]':0,
+                    'BER [%]':0,
+                    'RSSI':0,
+                    'Blocker Freq. Offset [MHz]':0,
+                    'Blocker Abs. Power [dBm]':0,     
+                }
+            
+            for sigGen_power in self.settings.siggen_power_list_dBm:
+                
+                self.siggen.setAmplitude(sigGen_power)
+                
+                ber_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
+
+                if i == 1 and done_percent == 0 and rssi == 0:
+                    print("BER measurement failed!")
+                    ber_success = False
+                    break
+
+                blocking_raw_measurement_record['Input Power [dBm]'] = sigGen_power-self.settings.cable_attenuation_dB
+                blocking_raw_measurement_record['BER [%]'] = ber_percent
+                blocking_raw_measurement_record['RSSI'] = rssi
+                blocking_raw_measurement_record['Blocker Freq. Offset [MHz]'] = " "
+                blocking_raw_measurement_record['Blocker Abs. Power [dBm]'] = " "
+                
+                self.sheet_rawdata.write(i, 0, frequency/1e6)
+                self.sheet_rawdata.write(i, 1, sigGen_power-self.settings.cable_attenuation_dB)
+                self.sheet_rawdata.write(i, 2, ber_percent)
+                self.sheet_rawdata.write(i, 3, rssi)
+                self.sheet_rawdata.write(i, 4, " ")
+                self.sheet_rawdata.write(i, 5, " ")
+                i += 1
+
+                record_df = pd.DataFrame(blocking_raw_measurement_record,index=[0])
+                record_df.to_csv(self.backup_csv_filename, mode='a', header=not path.exists(self.backup_csv_filename),index=False)
+                self.logger.info("\n"+record_df.to_string())
+
+                if ber_percent >= 0.1:
+
+                    self.sheet_sensdata.write(j, 0, frequency/1e6)
+                    self.sheet_sensdata.write(j, 1, sigGen_power - self.settings.cable_attenuation_dB)
+                    self.sheet_sensdata.write(j, 2, ber_percent)
+                    self.sheet_sensdata.write(j, 3, rssi)
+                    j += 1
+
+                    break
+
+            self.siggen.setAmplitude(sigGen_power + self.settings.desired_power_relative_to_sens_during_blocking_test_dB)
+            self.specan.setSigGenOutput_toggle(on_off=True)
+
+            for blocker_offset_freq in self.settings.blocker_offset_freq_list_Hz:
+                
+                self.specan.setSigGenFreq_Hz(frequency + blocker_offset_freq)
+
+                for blocker_power in self.settings.blocker_power_list_dBm:
+
+                    self.specan.setSigGenPower_dBm(blocker_power)
+                    ber_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
+
+                    if i == 1 and done_percent == 0 and rssi == 0:
+                        print("BER measurement failed, blocking test cancelled!")
+                        ber_success = False
+                        break
+                   
+                    blocking_raw_measurement_record['Input Power [dBm]'] = sigGen_power + self.settings.desired_power_relative_to_sens_during_blocking_test_dB - self.settings.cable_attenuation_dB
+                    blocking_raw_measurement_record['BER [%]'] = ber_percent
+                    blocking_raw_measurement_record['RSSI'] = rssi
+                    blocking_raw_measurement_record['Blocker Freq. Offset [MHz]'] = blocker_offset_freq/1e6
+                    blocking_raw_measurement_record['Blocker Abs. Power [dBm]'] = blocker_power-self.settings.blocker_cable_attenuation_dB
+                    
+                    self.sheet_rawdata.write(i, 0, frequency/1e6)
+                    self.sheet_rawdata.write(i, 1, sigGen_power + self.settings.desired_power_relative_to_sens_during_blocking_test_dB - self.settings.cable_attenuation_dB)
+                    self.sheet_rawdata.write(i, 2, ber_percent)
+                    self.sheet_rawdata.write(i, 3, rssi)
+                    self.sheet_rawdata.write(i, 4, blocker_offset_freq/1e6)
+                    self.sheet_rawdata.write(i, 5, blocker_power-self.settings.blocker_cable_attenuation_dB)
+                    i += 1
+
+                    record_df = pd.DataFrame(blocking_raw_measurement_record,index=[0])
+                    record_df.to_csv(self.backup_csv_filename, mode='a', header=not path.exists(self.backup_csv_filename),index=False)
+                    self.logger.info("\n"+record_df.to_string())
+
+                    if ber_percent >= 0.1:
+
+                        self.sheet_blockingdata.write(k, 0, frequency/1e6)
+                        self.sheet_blockingdata.write(k, 1, sigGen_power + self.settings.desired_power_relative_to_sens_during_blocking_test_dB - self.settings.cable_attenuation_dB)
+                        self.sheet_blockingdata.write(k, 2, blocker_offset_freq/1e6)
+                        self.sheet_blockingdata.write(k, 3, blocker_power-self.settings.blocker_cable_attenuation_dB)
+                        self.sheet_blockingdata.write(k, 4, ber_percent)
+                        k += 1
+
+                        break
+
+            self.specan.setSigGenOutput_toggle(on_off=False)
+
+        self.wstk._driver.reset()
+
+    def stop(self):
+        # if workbook already exists no need to close again
+        if not path.isfile(self.workbook_name):
+            self.logger.info("excel workbook closed")
+            if hasattr(self,'workbook'):
+                self.workbook.close()
+
+        try:
+            if hasattr(self,'siggen'):
+                self.siggen.toggleModulation(False)
+                self.siggen.toggleRFOut(False)
+                self.siggen.logger.handlers.clear()
+                del self.siggen
+        # if someone already closed the visa session
+        except visaerrors.InvalidSession:
+            self.siggen.logger.handlers.clear() 
+            self.initialize_siggen() 
+            self.siggen.toggleModulation(False) 
+            self.siggen.toggleRFOut(False)
+            self.siggen.logger.handlers.clear()
+            del self.siggen
+
+        try:
+            if hasattr(self,'specan'):
+                self.specan.setSigGenOutput_toggle(False)
+                self.specan.logger.handlers.clear()
+                del self.specan
+        # if someone already closed the visa session
+        except visaerrors.InvalidSession:
+            self.specan.logger.handlers.clear() 
+            self.initialize_specan_Generator() 
+            self.specan.setSigGenOutput_toggle(False)
+            self.specan.logger.handlers.clear()
+            del self.specan
+
+        try:
+            if hasattr(self,'wstk'):
+                self.wstk._driver.reset()
+                self.wstk.logger.handlers.clear()
+                del self.wstk
+        # if someone already closed the visa session
+        except visaerrors.InvalidSession:
+            self.wstk.logger.handlers.clear() 
+            self.wstk._driver.reset()
+            self.wstk.logger.handlers.clear()
+            del self.wstk        
+
+    def measure(self)->pd.DataFrame:
+        """
+        Initiate the measurement.
+
+        :return: The measured data
+        :rtype: pandas.DataFrame
+        """
+        self.initialize_siggen()
+        self.initialize_wstk()
+        self.initialize_reporter()
+        
+        if (self.settings.siggen_power_list_dBm[0] - self.settings.cable_attenuation_dB) > 10:
+            raise ValueError("Too high input power injected!")
+
+        self.initialize_specan_Generator()
+
+        # if self.settings.measure_with_CTUNE_w_SA:
+        #     self.ctune_w_sa()
 
         if self.settings.measure_with_CTUNE_w_SG:
             self.ctune_w_sg()
