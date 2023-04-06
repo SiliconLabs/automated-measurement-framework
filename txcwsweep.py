@@ -342,6 +342,7 @@ class TXCWSweep():
         self.stop()
 
         df = self.get_dataframe(self.backup_csv_filename)
+        Py_to_Excel_plotter(self.workbook_name,self.settings.harm_order_up_to)
         self.logger.debug(df.to_string())
         self.logger.info("\nDone with measurements")
 
