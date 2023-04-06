@@ -60,25 +60,36 @@ Print "Finished installing Python Packages"
 
 # downloading NI-VISA for all the instrument drivers
 Print "-------------------------------------------------------"
-Print "Fetching NI-VISA from the web ..."
-Start-BitsTransfer -Source $ni_visa_web_file -Destination ./$ni_visa_exec
-Print "Installer fetched, please install every component"
-Start-Process ("./$ni_visa_exec")
-Read-Host "If You Completed the NI-VISA Installer (or to skip) Press Enter"
-Print "Removing installer file ..."
-Remove-Item ("./$ni_visa_exec")
-Print "Installer file removed"
+$answer = Read-Host "Do you want to download and install NI-VISA (Y/N)"
+if ($answer -eq "Y" -or $answer -eq "y") {
+    Print "Fetching NI-VISA from the web ..."
+    Start-BitsTransfer -Source $ni_visa_web_file -Destination ./$ni_visa_exec
+    Print "Installer fetched, please install every component"
+    Start-Process ("./$ni_visa_exec")
+    Read-Host "If You Completed the NI-VISA Installer (or to skip) Press Enter"
+    Print "Removing installer file ..."
+    Remove-Item ("./$ni_visa_exec")
+    Print "Installer file removed"
+} else {
+    Print "Skipping NI-VISA install...."
+}
+
 
 
 Print "-------------------------------------------------------"
-Print "Fetching KEYSIGHT-VISA from the SL network ... This might take a few minutes"
-Start-BitsTransfer -Source $keysight_visa_web_file -Destination ./$keysight_visa_exec
-Start-Process ("./$keysight_visa_exec")
-Read-Host "If You Completed the KEYSIGHT-VISA Installer (or to skip) Press Enter"
-Print "Removing installer file ..."
-Remove-Item ("./$keysight_visa_exec")
-Print "Installer file removed"
-
+$answer = Read-Host "Do you want to download and install KEYSIGHT-VISA (Y/N)"
+if ($answer -eq "Y" -or $answer -eq "y") {
+    # User selected Yes
+    Print "Fetching KEYSIGHT-VISA from the SL network ... This might take a few minutes"
+    Start-BitsTransfer -Source $keysight_visa_web_file -Destination ./$keysight_visa_exec
+    Start-Process ("./$keysight_visa_exec")
+    Read-Host "If You Completed the KEYSIGHT-VISA Installer (or to skip) Press Enter"
+    Print "Removing installer file ..."
+    Remove-Item ("./$keysight_visa_exec")
+    Print "Installer file removed"
+} else {
+    Print "Skipping KEYSIGHT-VISA install...."
+}
 
 
 # updating the  submodules

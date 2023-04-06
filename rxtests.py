@@ -18,9 +18,6 @@ from common import Logger, Level
 import atexit
 from pyvisa import errors as visaerrors
 import serial
-from ctune_w_siggen import ctune_sg
-from ctune_w_sa import ctune_sa
-
 
 class Sensitivity():
     """
