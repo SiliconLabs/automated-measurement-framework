@@ -206,7 +206,7 @@ class TXCWSweep():
             self.worksheet.write(0, r, 'Harmonic #%d [dBm]' % w)
         self.row = 1
 
-        self.backup_csv_filename = "backup_csv.csv"
+        self.backup_csv_filename = "backup_csv_txcwsweep.csv"
 
 
         if path.exists(self.backup_csv_filename):

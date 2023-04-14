@@ -25,13 +25,14 @@ class Sensitivity():
 
     Required instruments: 
     - SiLabs EFR with RAILTest configured
-    - Signal Generator
+    - Signal Generator, currently tested with HP E4432B generator.
+    - (optional) If CTUNE is done with Spectrum analyzer, then it is needed
     """
 
     @dataclass
     class Settings():
         """
-        All configurable settings for this measurement.
+        All configurable settings for this measurement. 
 
         Sweepable variables can be configured using start,stop and steps parameters
         or by a list. If a list is not initialized, the start/stop parameters will be used. 
@@ -40,15 +41,42 @@ class Sensitivity():
         :param int freq_stop_hz: Stop frequency
         :param int freq_num_steps: Number of discrete frequency steps between stop and start values
         :param list freq_list_hz: Custom list of frequencies
+        
+        :param Logger.Settings logger_settings: Logger module settings for the measurement, imported from common
+
+        :param bool measure_with_CTUNE_w_SA: Enable CTUNE with spectrum analyzer (more accurate)
+        :param bool measure_with_CTUNE_w_SG: Enable CTUNE with signal generator (easier setup, faster)
 
         :param float cable_attenuation_dB: total cable loss in the test setup between SigGen and DUT
 
         :param float siggen_power_start_dBm: Start SigGen power, cable loss not included
         :param float siggen_power_stop_dBm: Stop SigGen power, cabel loss not included
         :param int siggen_power_steps: Number of discrete SigGen power steps between stop and start values
-        :param list siggen_power_list_dBm: Custom list of SigGen powers
-                
+        :param list siggen_power_list_dBm: Custom list of SigGen powers in dBm
+        :param str siggen_modulation_type: Modulation type, most common values: BPSK|QPSK|OQPSK|MSK|FSK2|FSK4|FSK8
+                                           See all modulation abbrevations at page 299 of:
+                                           https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf
+        :param float siggen_modulation_symbolrate_sps: Symbol rate of the output signal in symbols per second,
+                                                        minimum :47.684 sps, max: 12.500000 Msps
+        :param float siggen_modulation_deviation_Hz: Frequency deviation in hertz for FM types
+        :param str siggen_stream_type: data type of the output stream,
+                                       values: PN9|PN11|PN15|PN20|PN23|FIX4|"<file name>"|EXT|P4|P8|P16|P32|P64
+                                        see all documentation for stream modes by searching for "RADio:CUSTom:DATA" in https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf
+        :param str siggen_filter_type: "Gaussian" or "Nyquist" 
+        :param float siggen_filter_BbT: Filter BT factor between 0 and 1
+        :param bool siggen_custom_on: Custom mode one, for all SG functionality this should be on
+        :param Logger.Settings siggen_logger_settings: Logger module settings for SG, imported from common
+        
+        :param str specan_address: VISA address of Spectrum Analyzer,can check PyVISA documentation
+        :param int specan_span_hz: SA span in Hz
+        :param int specan_rbw_hz: SA resolution bandwidth in Hz
+        :param int specan_ref_level_dbm: SA reference level in dBm
+        :param str specan_detector_type: SA detector type, directly passed to pySpecAn
+        :param float specan_ref_offset: SA reference offset
+        :param Logger.Settings specan_logger_settings: Logger module settings for SA, imported from common
+
         :param str wstk_com_port: COM port of the RAILTest device
+        :param Logger.Settings wstk_logger_settings: Logger module settings for WSTK, imported from common
         """
         #Frequency range settings
         freq_start_hz: int = 868e6
@@ -59,7 +87,6 @@ class Sensitivity():
 
         #Cable attenutation setting
         cable_attenuation_dB: float = 2
-        cable_logger_settings: Logger.Settings = Logger.Settings()
         
         #sensitivity measurements with CTUNE
         measure_with_CTUNE_w_SA: bool = False
@@ -230,7 +257,7 @@ class Sensitivity():
                 ber_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=freq)
 
                 if i == 1 and done_percent == 0 and rssi == 0:
-                    print("BER measurement failed!")
+                    self.logger.info("BER measurement failed!")
                     ber_success = False
                     break
 
@@ -428,10 +455,10 @@ class Sensitivity():
         self.wstk._driver.reset()
         self.wstk._driver.rx(on_off=False)
         self.wstk._driver.setCtune(ctuned)
-        print("Tuned CTUNE value: " + str(ctuned))
-        print("Actual DUT frequency: " + str(marker_freq) + " Hz")
-        print("Frequency error: " + str(marker_freq - freq) + " Hz")
-        print('\n')
+        self.logger.info("Tuned CTUNE value: " + str(ctuned))
+        self.logger.info("Actual DUT frequency: " + str(marker_freq) + " Hz")
+        self.logger.info("Frequency error: " + str(marker_freq - freq) + " Hz")
+        self.logger.info('\n')
     
     def ctune_w_sg(self):
 
@@ -460,8 +487,8 @@ class Sensitivity():
             self.wstk._driver.setCtune(ctune_actual)
             self.wstk._driver.rx(True)
             RSSI_actual = self.wstk.readRSSI()
-            print(ctune_actual)
-            print(RSSI_actual)
+            self.logger.info(ctune_actual)
+            self.logger.info(RSSI_actual)
             if RSSI_actual > RSSI_max:
                 RSSI_max = RSSI_actual
                 ctuned = ctune_actual
@@ -473,9 +500,9 @@ class Sensitivity():
         self.wstk._driver.rx(on_off=False)
         self.wstk._driver.setCtune(ctuned)
 
-        print("Tuned CTUNE value: " + str(ctuned))
-        print("Max RSSI: " + str(RSSI_max) + " dBm")
-        print('\n')
+        self.logger.info("Tuned CTUNE value: " + str(ctuned))
+        self.logger.info("Max RSSI: " + str(RSSI_max) + " dBm")
+        self.logger.info('\n')
     
     def stop(self):
         # if workbook already exists no need to close again
@@ -566,9 +593,33 @@ class Sensitivity():
 
 
 class Blocking(Sensitivity):
-    
+    """Measuring receiver blocking on different frequencies of the EFR32-based design.
+
+        Subclass of sensitivity, so all the parameters from before are inherited.
+    """
     @dataclass
     class Settings(Sensitivity.Settings):
+        """
+        All configurable settings for this measurement. 
+
+        Sweepable variables can be configured using start,stop and steps parameters
+        or by a list. If a list is not initialized, the start/stop parameters will be used. 
+
+        :param int blocker_offset_start_freq_Hz: Blocker frequency offset stop value in hz
+        :param int blocker_offset_stop_freq_Hz: Blocker frequency offset stop value in hz
+        :param int blocker_offset_freq_steps: Blocker frequency offset step values
+        :param list blocker_offset_freq_list_Hz: Blocker frequency discrete list option
+
+        :param float blocker_cable_attenuation_dB: Attenuation from the blocker generator to the DUT
+
+        :param float blocker_start_power_dBm: Blocker start power value in dbm, without the cable attenution
+        :param float blocker_stop_power_dBm: Blocker stop power value in dbm, without the cable attenution
+        :param int blocker_power_steps: Blocker power value steps 
+        :param list blocker_power_list_dBm: Blocker power discrete list option
+
+        :param Logger.Settings blocker_logger_settings: Logger module settings for blocking measurement, imported from common
+        
+        """
 
         desired_power_relative_to_sens_during_blocking_test_dB: float = 3  #blocking test when desired power is above the senitivity level by this value
         
@@ -710,7 +761,7 @@ class Blocking(Sensitivity):
                 ber_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
 
                 if i == 1 and done_percent == 0 and rssi == 0:
-                    print("BER measurement failed!")
+                    self.logger.info("BER measurement failed!")
                     ber_success = False
                     break
 
@@ -755,7 +806,7 @@ class Blocking(Sensitivity):
                     ber_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
 
                     if i == 1 and done_percent == 0 and rssi == 0:
-                        print("BER measurement failed, blocking test cancelled!")
+                        self.logger.info("BER measurement failed, blocking test cancelled!")
                         ber_success = False
                         break
                    
@@ -881,7 +932,19 @@ class FreqOffset_Sensitivity(Sensitivity):
     
     @dataclass
     class Settings(Sensitivity.Settings):
+        """
+        All configurable settings for this measurement. 
 
+        Sweepable variables can be configured using start,stop and steps parameters
+        or by a list. If a list is not initialized, the start/stop parameters will be used. 
+
+        :param int freq_offset_start_Hz: Frequency offset stop value in hz
+        :param int freq_offset_stop_Hz: Frequency offset stop value in hz
+        :param int freq_offset_steps: Frequency offset step values in hz
+        :param list freq_offset_list_Hz: Discrete frequency list option
+
+        :param Logger.Settings freq_offset_logger_settings: Logger module settings for freqency offset measurement, imported from common
+        """
         freq_offset_start_Hz: int = -100e3   
         freq_offset_stop_Hz: int = 100e3     
         freq_offset_steps: int = 21
@@ -1018,7 +1081,7 @@ class FreqOffset_Sensitivity(Sensitivity):
                         break
 
                     if done_percent == 0 and j == 1 and rssi == 0:                     
-                        print("BER measurement failed!")
+                        self.logger.info("BER measurement failed!")
                         ber_success = False
                         break
 
@@ -1040,6 +1103,17 @@ class RSSI_Sweep(Sensitivity):
     
     @dataclass
     class Settings(Sensitivity.Settings):
+        """
+        All configurable settings for this measurement. 
+
+        Sweepable variables can be configured using start,stop and steps parameters
+        or by a list. If a list is not initialized, the start/stop parameters will be used. 
+
+        :param int siggen_freq_start_Hz: SG frequency stop value in hz
+        :param int siggen_freq_stop_Hz: SG frequency stop value in hz
+        :param int siggen_freq_steps: SG frequency step values in hz
+        :param list siggen_freq_list_Hz: Discrete frequency list option
+        """
         
         siggen_freq_start_Hz: int = 868e6   
         siggen_freq_stop_Hz: int = 928e6     
@@ -1238,7 +1312,7 @@ class Waterfall(Sensitivity):
                 ber_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=freq)
 
                 if i == 1 and done_percent == 0 and rssi == 0:
-                    print("BER measurement failed!")
+                    self.logger.info("BER measurement failed!")
                     ber_success = False
                     break
 
