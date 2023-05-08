@@ -18,8 +18,6 @@ from common import Logger, Level
 import atexit
 from pyvisa import errors as visaerrors
 import serial
-from ctune_w_siggen import ctune_sg
-from ctune_w_sa import ctune_sa
 import xlsxwriter
 import os
 
@@ -67,6 +65,7 @@ class Sensitivity():
         cable_logger_settings: Logger.Settings = Logger.Settings()
         
         #sensitivity measurements with CTUNE
+        ctune_initial:int = None
         measure_with_CTUNE_w_SA: bool = False
         measure_with_CTUNE_w_SG: bool = False
 
@@ -159,7 +158,7 @@ class Sensitivity():
         self.specan.setRefOffset(self.settings.specan_ref_offset)
     
     def initialize_wstk(self):
-        self.wstk = WSTK_RAILTest(self.settings.wstk_com_port,logger_settings=self.settings.wstk_logger_settings)
+        self.wstk = WSTK_RAILTest(self.settings.wstk_com_port,logger_settings=self.settings.wstk_logger_settings,reset=True)
 
         self.wstk._driver.reset()
         self.wstk._driver.rx(on_off=False)
@@ -501,11 +500,11 @@ class Sensitivity():
         self.wstk._driver.reset()
         self.wstk._driver.rx(on_off=False)
         self.wstk._driver.setCtune(ctuned)
-        print("Tuned CTUNE value: " + str(ctuned))
-        print("Actual DUT frequency: " + str(marker_freq) + " Hz")
-        print("Frequency error: " + str(marker_freq - freq) + " Hz")
-        print('\n')
-    
+        self.logger.info("Tuned CTUNE value: " + str(ctuned))
+        self.logger.info("Actual DUT frequency: " + str(marker_freq) + " Hz")
+        self.logger.info("Frequency error: " + str(marker_freq - freq) + " Hz")
+
+        return ctuned    
     def ctune_w_sg(self):
 
         ctune_init = 120
@@ -514,7 +513,7 @@ class Sensitivity():
         freq = self.settings.freq_list_hz[0]
 
         self.siggen.setFrequency(freq)
-        self.siggen.setAmplitude(-30)
+        self.siggen.setAmplitude(-40)
         self.siggen.toggleModulation(True)
         self.siggen.toggleRFOut(True)
 
@@ -525,16 +524,20 @@ class Sensitivity():
         self.wstk._driver.rx(True)
         RSSI_max = self.wstk.readRSSI()
         ctuned = ctune_init
-        ctune_range = np.linspace(ctune_min, ctune_max, ctune_max-ctune_min+1, dtype=int)
+        ctune_range = np.linspace(ctune_min, ctune_max, 100, dtype=int)
         
         for ctune_item in ctune_range:
             ctune_actual = ctune_item
             self.wstk._driver.rx(False)
             self.wstk._driver.setCtune(ctune_actual)
             self.wstk._driver.rx(True)
-            RSSI_actual = self.wstk.readRSSI()
-            print(ctune_actual)
-            print(RSSI_actual)
+            try:
+                RSSI_actual = self.wstk.readRSSI()
+            except ValueError:
+                self.wstk._driver.rx(True)
+                RSSI_actual = self.wstk.readRSSI()
+                self.logger.debug("Caught RAIL bug getRSSI value error")
+            self.logger.debug("Actual CTUNE: " +str(ctune_actual)+", actual RSSI: "+ str(RSSI_actual))
             if RSSI_actual > RSSI_max:
                 RSSI_max = RSSI_actual
                 ctuned = ctune_actual
@@ -546,9 +549,9 @@ class Sensitivity():
         self.wstk._driver.rx(on_off=False)
         self.wstk._driver.setCtune(ctuned)
 
-        print("Tuned CTUNE value: " + str(ctuned))
-        print("Max RSSI: " + str(RSSI_max) + " dBm")
-        print('\n')
+        self.logger.info("Tuned CTUNE value: " + str(ctuned))
+        self.logger.info("Max RSSI: " + str(RSSI_max) + " dBm")
+
     
     def stop(self):
         # if workbook already exists no need to close again
@@ -616,12 +619,19 @@ class Sensitivity():
 
         if (self.settings.siggen_power_list_dBm[0] - self.settings.cable_attenuation_dB) > 10:
             raise ValueError("Too high input power injected!")
+        
+        if self.settings.ctune_initial is None:
 
-        if self.settings.measure_with_CTUNE_w_SA:
-            self.ctune_w_sa()
+            if self.settings.measure_with_CTUNE_w_SA:
+                self.ctune_w_sa()
+                self.logger.warn("Switch to SG!")
+                input()
 
-        if self.settings.measure_with_CTUNE_w_SG:
-            self.ctune_w_sg()
+            if self.settings.measure_with_CTUNE_w_SG:
+                self.ctune_w_sg()
+        else:
+            self.wstk._driver.setCtune(self.settings.ctune_initial)
+            self.logger.info("Set Ctune:"+str(self.settings.ctune_initial))
 
         self.initiate()
 
