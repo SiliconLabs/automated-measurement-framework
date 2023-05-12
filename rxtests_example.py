@@ -15,7 +15,7 @@ CTUNE_Tuning_w_SG = False                           # CTUNE tuning with the sign
 Chip_Name = 'EFR32FG23'                             # Chip name of DUT
 Board_Name = 'BRD4204D'                             # Board name of DUT
 # Test Equipment and DUT Address Settings
-WSTK_COM_Port = 'COM3'                              # WSTK board COM port
+WSTK_COM_Port = 'COM9'                              # WSTK board COM port
 SigGen_Address = 'GPIB0::5::INSTR'                  # Signal Generator address
 SpecAn_Address = 'TCPIP::169.254.88.77::INSTR'      # Spectrum Analyzer address
 # Desired Signal Test Frequencies
@@ -28,8 +28,15 @@ SigGen_Power_Start_dBm = -100                       # Signal Generator start pow
 SigGen_Power_Stop_dBm = -113                        # Signal Generator stop power, used on the desired signal path
 SigGen_Power_Num_Steps = 27                         # Number of power steps, used on the desired signal path
 Modulation_Type = 'FSK2'                            # Modulation type
-Symbol_Rate_bps = 100e3                             # Symbol rate in bps
-Freq_Deviation_Hz = 50e3                            # Frequency deviation in Hz
+Symbol_Rate_bps = 1000e3                             # Symbol rate in bps
+Freq_Deviation_Hz = 500e3                            # Frequency deviation in Hz
+Error_Rate_Type = 'BER'
+Stream_Type ='PN9'  
+Error_Rate_Threshold = 0.1
+#uncomment for PER
+# Error_Rate_Type = 'PER'
+# Stream_Type ='\"TEMP@BIT\"'                                 # for BER this should be 'PN9', for PER this is the packet name on the generator
+# Error_Rate_Threshold = 10
 # Cable losses
 Desired_Path_Cable_Attenuation_dB = 7               # cable loss on the desired signal path
 Blocker_Path_Cable_Attenuation_dB = 7               # cable loss on hte blocker signal path
@@ -78,8 +85,11 @@ sensitivity_settings = Sensitivity.Settings(
     siggen_power_steps = SigGen_Power_Num_Steps,        
     siggen_modulation_type = Modulation_Type,            
     siggen_modulation_symbolrate_sps = Symbol_Rate_bps,   
-    siggen_modulation_deviation_Hz = Freq_Deviation_Hz,      
-    siggen_logger_settings = Logger.Settings(logging_level=Level.INFO),
+    siggen_modulation_deviation_Hz = Freq_Deviation_Hz,
+    err_rate_type= Error_Rate_Type,
+    err_rate_threshold_percent=Error_Rate_Threshold,
+    siggen_stream_type=Stream_Type,
+    siggen_logger_settings = Logger.Settings(logging_level=Level.DEBUG),
     specan_logger_settings = Logger.Settings(logging_level=Level.INFO),
     wstk_logger_settings = Logger.Settings(logging_level=Level.INFO)
 )

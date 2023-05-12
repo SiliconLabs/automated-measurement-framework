@@ -34,7 +34,7 @@ class Sensitivity():
     @dataclass
     class Settings():
         """
-        All configurable settings for this measurement.
+        All configurable settings for this measurement. 
 
         Sweepable variables can be configured using start,stop and steps parameters
         or by a list. If a list is not initialized, the start/stop parameters will be used. 
@@ -43,15 +43,51 @@ class Sensitivity():
         :param int freq_stop_hz: Stop frequency
         :param int freq_num_steps: Number of discrete frequency steps between stop and start values
         :param list freq_list_hz: Custom list of frequencies
+        
+        :param Logger.Settings logger_settings: Logger module settings for the measurement, imported from common
+
+        :param bool measure_with_CTUNE_w_SA: Enable CTUNE with spectrum analyzer (more accurate)
+        :param bool measure_with_CTUNE_w_SG: Enable CTUNE with signal generator (easier setup, faster)
+
+
+        :param str err_rate_type: 'BER' or 'PER', for PER the stream type should be a @BIT filename like "temp@BIT", use \"\"
+        :param float err_rate_threshold_percent: where the sensitivity threshold is reached, different for standards
 
         :param float cable_attenuation_dB: total cable loss in the test setup between SigGen and DUT
 
         :param float siggen_power_start_dBm: Start SigGen power, cable loss not included
         :param float siggen_power_stop_dBm: Stop SigGen power, cabel loss not included
         :param int siggen_power_steps: Number of discrete SigGen power steps between stop and start values
-        :param list siggen_power_list_dBm: Custom list of SigGen powers
-                
+        :param list siggen_power_list_dBm: Custom list of SigGen powers in dBm
+        :param str siggen_modulation_type: Modulation type, most common values: BPSK|QPSK|OQPSK|MSK|FSK2|FSK4|FSK8
+                                           See all modulation abbrevations at page 299 of:
+                                           https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf
+        :param float siggen_modulation_symbolrate_sps: Symbol rate of the output signal in symbols per second,
+                                                        minimum :47.684 sps, max: 12.500000 Msps
+        :param float siggen_modulation_deviation_Hz: Frequency deviation in hertz for FM types
+        :param str siggen_stream_type: data type of the output stream,
+                                       values: PN9|PN11|PN15|PN20|PN23|FIX4|"<file name>"|EXT|P4|P8|P16|P32|P64
+                                        see all documentation for stream modes by searching for "RADio:CUSTom:DATA" in https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf
+        :param str siggen_filter_type: "Gaussian" or "Nyquist" 
+        :param float siggen_filter_BbT: Filter BT factor between 0 and 1
+        :param bool siggen_custom_on: Custom mode one, for all SG functionality this should be on
+        :param str siggen_per_packet_filename: the name of the file on this PC, that contains the binary data of the test packet
+                                                Should be in the format of Saleae Logic analyzers csv export
+        :param str siggen_per_packet_siggen_name : what the name of the @BIT file will be on the generator itself
+        :param str siggen_pattern_repeat: continuous or single ( CONT or SING)
+        :param str siggen_trigger_type: KEY|BUS|EXT- triggerkey on generator, GPIB bus, or external, almost always use BUS
+        :param Logger.Settings siggen_logger_settings: Logger module settings for SG, imported from common
+        
+        :param str specan_address: VISA address of Spectrum Analyzer,can check PyVISA documentation
+        :param int specan_span_hz: SA span in Hz
+        :param int specan_rbw_hz: SA resolution bandwidth in Hz
+        :param int specan_ref_level_dbm: SA reference level in dBm
+        :param str specan_detector_type: SA detector type, directly passed to pySpecAn
+        :param float specan_ref_offset: SA reference offset
+        :param Logger.Settings specan_logger_settings: Logger module settings for SA, imported from common
+
         :param str wstk_com_port: COM port of the RAILTest device
+        :param Logger.Settings wstk_logger_settings: Logger module settings for WSTK, imported from common
         """
         #Frequency range settings
         freq_start_hz: int = 868e6
@@ -68,6 +104,9 @@ class Sensitivity():
         ctune_initial:int = None
         measure_with_CTUNE_w_SA: bool = False
         measure_with_CTUNE_w_SG: bool = False
+        #error rate settings
+        err_rate_type: str = 'BER' #suprise, other possible option is 'PER'
+        err_rate_threshold_percent:float = 0.1
 
         #SG settings 
         siggen_address: str = 'GPIB0::5::INSTR'
@@ -80,10 +119,14 @@ class Sensitivity():
         siggen_modulation_deviation_Hz: float = 50e3
         #siggen_rf_on = True
         #siggen_mod_on = True
-        siggen_stream_type = "PN9" #see all available stream modes by searching for "RADio:CUSTom:DATA" in https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf
-        siggen_filter_type = "Gaussian" #Gaussian or Nyquist
-        siggen_filter_BbT = 0.5
-        siggen_custom_on = True
+        siggen_stream_type:str = "PN9" #see all available stream modes by searching for "RADio:CUSTom:DATA" in https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf
+        siggen_filter_type:str = "Gaussian" #Gaussian or Nyquist
+        siggen_filter_BbT:float = 0.5
+        siggen_custom_on:bool = True
+        siggen_per_packet_filename :str = "pysiggen/packets/std_rail_packet.csv"
+        siggen_per_packet_siggen_name :str = "TEMP"
+        siggen_pattern_repeat:str = "SINGle"
+        siggen_trigger_type:str = "BUS"
         siggen_logger_settings: Logger.Settings = Logger.Settings()
 
         #SA settings
@@ -134,6 +177,9 @@ class Sensitivity():
         self.siggen.setDeviation(self.settings.siggen_modulation_deviation_Hz)
         self.siggen.setFilter(self.settings.siggen_filter_type)
         self.siggen.setFilterBbT(self.settings.siggen_filter_BbT)
+        self.siggen.setBinaryData(self.settings.siggen_per_packet_filename,self.settings.siggen_per_packet_siggen_name)
+        self.siggen.setPatternRepeat(self.settings.siggen_pattern_repeat)
+        self.siggen.setTriggerType(self.settings.siggen_trigger_type)
         self.siggen.setStreamType(self.settings.siggen_stream_type)
         self.siggen.toggleCustom(self.settings.siggen_custom_on)
         self.siggen.toggleModulation(False)
@@ -191,13 +237,13 @@ class Sensitivity():
         self.sheet_rawdata = self.workbook.add_worksheet('RawData')
         self.sheet_rawdata.write(0, 0, 'Frequency [MHz]')
         self.sheet_rawdata.write(0, 1, 'Input Power [dBm]')
-        self.sheet_rawdata.write(0, 2, 'BER [%]')
+        self.sheet_rawdata.write(0, 2, self.settings.err_rate_type+' [%]')
         self.sheet_rawdata.write(0, 3, 'RSSI')
         
         self.sheet_sensdata = self.workbook.add_worksheet('SensData')
         self.sheet_sensdata.write(0, 0, 'Frequency [MHz]')
         self.sheet_sensdata.write(0, 1, 'Sensitivity [dBm]')
-        self.sheet_sensdata.write(0, 2, 'BER [%]')
+        self.sheet_sensdata.write(0, 2, self.settings.err_rate_type+' [%]')
         self.sheet_sensdata.write(0, 3, 'RSSI')
 
         self.row = 1
@@ -246,9 +292,9 @@ class Sensitivity():
         # Plot the Fundamental input power vs BER
         plot.add_series({"categories" : "=RawData!$B$2:$B$10000",
                     "values" : "=RawData!$C$2:$C$10000",
-                    "name" : "BER"})
+                    "name" : self.settings.err_rate_type})
         plot.set_x_axis({"name" : "Input Power [dBm]"})
-        plot.set_y_axis(({"name" : "BER [%]"}))
+        plot.set_y_axis(({"name" : self.settings.err_rate_type+' [%]'}))
         plot.set_title({'name': 'Waterfall', 'name_font':{'name':'Calibri(Body)','size':12}})
         Chart_Sheet.insert_chart("A" + "1", plot, {'x_scale': 1.2, 'y_scale': 1.4})
 
@@ -292,27 +338,32 @@ class Sensitivity():
             sens_raw_measurement_record = {
                     'Frequency [MHz]':freq/1e6,
                     'Input Power [dBm]':0,
-                    'BER [%]':0,
+                    self.settings.err_rate_type+' [%]':0,
                     'RSSI':0,     
                 }
 
             for siggen_power in self.settings.siggen_power_list_dBm:
 
                 self.siggen.setAmplitude(siggen_power)
-                ber_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=freq)
 
+                if self.settings.err_rate_type == 'BER':
+                    err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=freq)
+                elif self.settings.err_rate_type == 'PER':
+                    err_percent,done_percent,rssi = self.wstk.measurePer(npackets=100,interpacket_delay_s = 0.001,frequency_Hz=freq,tx_start_function=self.siggen.sendTrigger)
+                else:
+                    raise TypeError('Not recognized error rate string!')
                 if i == 1 and done_percent == 0 and rssi == 0:
-                    print("BER measurement failed!")
+                    print(self.settings.err_rate_type +" measurement failed!")
                     ber_success = False
                     break
 
                 sens_raw_measurement_record['Input Power [dBm]'] = siggen_power-self.settings.cable_attenuation_dB
-                sens_raw_measurement_record['BER [%]'] = ber_percent
+                sens_raw_measurement_record[self.settings.err_rate_type +' [%]'] = err_percent
                 sens_raw_measurement_record['RSSI'] = rssi
 
                 self.sheet_rawdata.write(i, 0, freq/1e6)
                 self.sheet_rawdata.write(i, 1, siggen_power-self.settings.cable_attenuation_dB)
-                self.sheet_rawdata.write(i, 2, ber_percent)
+                self.sheet_rawdata.write(i, 2, err_percent)
                 self.sheet_rawdata.write(i, 3, rssi)
                 i += 1
 
@@ -320,11 +371,11 @@ class Sensitivity():
                 record_df.to_csv(self.backup_csv_filename, mode='a', header=not path.exists(self.backup_csv_filename),index=False)
                 self.logger.info("\n"+record_df.to_string())
 
-                if ber_percent >= 0.1:
+                if err_percent >= self.settings.err_rate_threshold_percent:
 
                         self.sheet_sensdata.write(j, 0, freq/1e6)
                         self.sheet_sensdata.write(j, 1, siggen_power-self.settings.cable_attenuation_dB)
-                        self.sheet_sensdata.write(j, 2, ber_percent)
+                        self.sheet_sensdata.write(j, 2, err_percent)
                         self.sheet_sensdata.write(j, 3, rssi)
                         j += 1
 
