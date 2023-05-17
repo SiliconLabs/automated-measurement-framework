@@ -791,7 +791,7 @@ class Blocking(Sensitivity):
         self.sheet_rawdata = self.workbook.add_worksheet('RawData')
         self.sheet_rawdata.write(0, 0, 'Frequency [MHz]')
         self.sheet_rawdata.write(0, 1, 'Input Power [dBm]')
-        self.sheet_rawdata.write(0, 2, 'BER [%]')
+        self.sheet_rawdata.write(0, 2, self.settings.err_rate_type +' [%]')
         self.sheet_rawdata.write(0, 3, 'RSSI')
         self.sheet_rawdata.write(0, 4, 'Blocker Freq. Offset [MHz]')
         self.sheet_rawdata.write(0, 5, 'Blocker Abs. Power [dBm]')
@@ -799,7 +799,7 @@ class Blocking(Sensitivity):
         self.sheet_sensdata = self.workbook.add_worksheet('SensData')
         self.sheet_sensdata.write(0, 0, 'Frequency [MHz]')
         self.sheet_sensdata.write(0, 1, 'Sensitivity [dBm]')
-        self.sheet_sensdata.write(0, 2, 'BER [%]')
+        self.sheet_sensdata.write(0, 2, self.settings.err_rate_type +' [%]')
         self.sheet_sensdata.write(0, 3, 'RSSI')
 
         self.sheet_blockingdata = self.workbook.add_worksheet('BlockingData')
@@ -807,7 +807,7 @@ class Blocking(Sensitivity):
         self.sheet_blockingdata.write(0, 1, 'Input Power [dBm]')
         self.sheet_blockingdata.write(0, 2, 'Blocker Freq. Offset [MHz]')
         self.sheet_blockingdata.write(0, 3, 'Blocker Abs. Power [dBm]')
-        self.sheet_blockingdata.write(0, 4, 'BER [%]')
+        self.sheet_blockingdata.write(0, 4, self.settings.err_rate_type +' [%]')
 
         self.row = 1
 
@@ -912,7 +912,7 @@ class Blocking(Sensitivity):
             blocking_raw_measurement_record = {
                     'Frequency [MHz]':frequency/1e6,
                     'Input Power [dBm]':0,
-                    'BER [%]':0,
+                    self.settings.err_rate_type +' [%]':0,
                     'RSSI':0,
                     'Blocker Freq. Offset [MHz]':0,
                     'Blocker Abs. Power [dBm]':0,     
@@ -922,22 +922,26 @@ class Blocking(Sensitivity):
                 
                 self.siggen.setAmplitude(sigGen_power)
                 
-                ber_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
-
+                if self.settings.err_rate_type == 'BER':
+                    err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
+                elif self.settings.err_rate_type == 'PER':
+                    err_percent,done_percent,rssi = self.wstk.measurePer(npackets=100,interpacket_delay_s = 0.001,frequency_Hz=frequency,tx_start_function=self.siggen.sendTrigger)
+                else:
+                    raise TypeError('Not recognized error rate string!')
                 if i == 1 and done_percent == 0 and rssi == 0:
-                    print("BER measurement failed!")
+                    print(self.settings.err_rate_type +" measurement failed!")
                     ber_success = False
                     break
 
                 blocking_raw_measurement_record['Input Power [dBm]'] = sigGen_power-self.settings.cable_attenuation_dB
-                blocking_raw_measurement_record['BER [%]'] = ber_percent
+                blocking_raw_measurement_record[self.settings.err_rate_type +' [%]'] = err_percent
                 blocking_raw_measurement_record['RSSI'] = rssi
                 blocking_raw_measurement_record['Blocker Freq. Offset [MHz]'] = " "
                 blocking_raw_measurement_record['Blocker Abs. Power [dBm]'] = " "
                 
                 self.sheet_rawdata.write(i, 0, frequency/1e6)
                 self.sheet_rawdata.write(i, 1, sigGen_power-self.settings.cable_attenuation_dB)
-                self.sheet_rawdata.write(i, 2, ber_percent)
+                self.sheet_rawdata.write(i, 2, err_percent)
                 self.sheet_rawdata.write(i, 3, rssi)
                 self.sheet_rawdata.write(i, 4, " ")
                 self.sheet_rawdata.write(i, 5, " ")
@@ -947,11 +951,11 @@ class Blocking(Sensitivity):
                 record_df.to_csv(self.backup_csv_filename, mode='a', header=not path.exists(self.backup_csv_filename),index=False)
                 self.logger.info("\n"+record_df.to_string())
 
-                if ber_percent >= 0.1:
+                if err_percent >= self.settings.err_rate_threshold_percent:
 
                     self.sheet_sensdata.write(j, 0, frequency/1e6)
                     self.sheet_sensdata.write(j, 1, sigGen_power - self.settings.cable_attenuation_dB)
-                    self.sheet_sensdata.write(j, 2, ber_percent)
+                    self.sheet_sensdata.write(j, 2, err_percent)
                     self.sheet_sensdata.write(j, 3, rssi)
                     j += 1
 
@@ -967,22 +971,26 @@ class Blocking(Sensitivity):
                 for blocker_power in self.settings.blocker_power_list_dBm:
 
                     self.specan.setSigGenPower_dBm(blocker_power)
-                    ber_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
-
+                    if self.settings.err_rate_type == 'BER':
+                        err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
+                    elif self.settings.err_rate_type == 'PER':
+                        err_percent,done_percent,rssi = self.wstk.measurePer(npackets=100,interpacket_delay_s = 0.001,frequency_Hz=frequency,tx_start_function=self.siggen.sendTrigger)
+                    else:
+                        raise TypeError('Not recognized error rate string!')
                     if i == 1 and done_percent == 0 and rssi == 0:
-                        print("BER measurement failed, blocking test cancelled!")
+                        print(self.settings.err_rate_type + " measurement failed, blocking test cancelled!")
                         ber_success = False
                         break
                    
                     blocking_raw_measurement_record['Input Power [dBm]'] = sigGen_power + self.settings.desired_power_relative_to_sens_during_blocking_test_dB - self.settings.cable_attenuation_dB
-                    blocking_raw_measurement_record['BER [%]'] = ber_percent
+                    blocking_raw_measurement_record[self.settings.err_rate_type +' [%]'] = err_percent
                     blocking_raw_measurement_record['RSSI'] = rssi
                     blocking_raw_measurement_record['Blocker Freq. Offset [MHz]'] = blocker_offset_freq/1e6
                     blocking_raw_measurement_record['Blocker Abs. Power [dBm]'] = blocker_power-self.settings.blocker_cable_attenuation_dB
                     
                     self.sheet_rawdata.write(i, 0, frequency/1e6)
                     self.sheet_rawdata.write(i, 1, sigGen_power + self.settings.desired_power_relative_to_sens_during_blocking_test_dB - self.settings.cable_attenuation_dB)
-                    self.sheet_rawdata.write(i, 2, ber_percent)
+                    self.sheet_rawdata.write(i, 2, err_percent)
                     self.sheet_rawdata.write(i, 3, rssi)
                     self.sheet_rawdata.write(i, 4, blocker_offset_freq/1e6)
                     self.sheet_rawdata.write(i, 5, blocker_power-self.settings.blocker_cable_attenuation_dB)
@@ -992,13 +1000,13 @@ class Blocking(Sensitivity):
                     record_df.to_csv(self.backup_csv_filename, mode='a', header=not path.exists(self.backup_csv_filename),index=False)
                     self.logger.info("\n"+record_df.to_string())
 
-                    if ber_percent >= 0.1:
+                    if err_percent >= self.settings.err_rate_threshold_percent:
 
                         self.sheet_blockingdata.write(k, 0, frequency/1e6)
                         self.sheet_blockingdata.write(k, 1, sigGen_power + self.settings.desired_power_relative_to_sens_during_blocking_test_dB - self.settings.cable_attenuation_dB)
                         self.sheet_blockingdata.write(k, 2, blocker_offset_freq/1e6)
                         self.sheet_blockingdata.write(k, 3, blocker_power-self.settings.blocker_cable_attenuation_dB)
-                        self.sheet_blockingdata.write(k, 4, ber_percent)
+                        self.sheet_blockingdata.write(k, 4, err_percent)
                         k += 1
 
                         break
@@ -1104,6 +1112,10 @@ class FreqOffset_Sensitivity(Sensitivity):
         freq_offset_steps: int = 21
         freq_offset_list_Hz: list|None = None
 
+        stop_at_no_signal:bool = True # if the frequency and power values are so out of bounds that the rx cant happen,
+                                 # do not sweep the rest of the values, turn this False for 'bathtub curve'
+                                 # makes measurement MUCH slower, but sweeps every value
+
         freq_offset_logger_settings: Logger.Settings = Logger.Settings()
                 
 
@@ -1159,14 +1171,14 @@ class FreqOffset_Sensitivity(Sensitivity):
         self.sheet_rawdata.write(0, 0, 'Frequency [MHz]')
         self.sheet_rawdata.write(0, 1, 'Freq. Offset [kHz]')
         self.sheet_rawdata.write(0, 2, 'Input Power [dBm]')
-        self.sheet_rawdata.write(0, 3, 'BER [%]')
+        self.sheet_rawdata.write(0, 3, self.settings.err_rate_type +' [%]')
         self.sheet_rawdata.write(0, 4, 'RSSI')
         
         self.sheet_sensdata = self.workbook.add_worksheet('SensData')
         self.sheet_sensdata.write(0, 0, 'Frequency [MHz]')
         self.sheet_sensdata.write(0, 1, 'Freq. Offset [kHz]')
         self.sheet_sensdata.write(0, 2, 'Sensitivity [dBm]')
-        self.sheet_sensdata.write(0, 3, 'BER [%]')
+        self.sheet_sensdata.write(0, 3, self.settings.err_rate_type +' [%]')
         self.sheet_sensdata.write(0, 4, 'RSSI')
 
         self.row = 1
@@ -1233,7 +1245,6 @@ class FreqOffset_Sensitivity(Sensitivity):
         os.rename(output_workbook_name, self.workbook_name)
     
     def initiate(self):
-        
         self.siggen.toggleModulation(True)
         self.siggen.toggleRFOut(True)
         global ber_success
@@ -1249,7 +1260,7 @@ class FreqOffset_Sensitivity(Sensitivity):
                     'Frequency [MHz]':frequency/1e6,
                     'Freq. Offset [kHz]':0,
                     'Input Power [dBm]':0,
-                    'BER [%]':0,
+                     self.settings.err_rate_type + ' [%]':0,
                     'RSSI':0,   
                 }
 
@@ -1261,18 +1272,23 @@ class FreqOffset_Sensitivity(Sensitivity):
                 for sigGen_power in self.settings.siggen_power_list_dBm:
                     
                     self.siggen.setAmplitude(sigGen_power)
-                    
-                    ber_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
 
+                    if self.settings.err_rate_type == 'BER':
+                        err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
+                    elif self.settings.err_rate_type == 'PER':
+                        err_percent,done_percent,rssi = self.wstk.measurePer(npackets=100,interpacket_delay_s = 0.001,frequency_Hz=frequency,tx_start_function=self.siggen.sendTrigger)
+                    else:
+                        raise TypeError('Not recognized error rate string!')
+                    
                     freqoffset_sens_raw_measurement_record['Freq. Offset [kHz]'] = freq_offset/1e3
                     freqoffset_sens_raw_measurement_record['Input Power [dBm]'] = sigGen_power-self.settings.cable_attenuation_dB
-                    freqoffset_sens_raw_measurement_record['BER [%]'] = ber_percent
+                    freqoffset_sens_raw_measurement_record[self.settings.err_rate_type + ' [%]'] = err_percent
                     freqoffset_sens_raw_measurement_record['RSSI'] = rssi
                     
                     self.sheet_rawdata.write(i, 0, frequency/1e6)
                     self.sheet_rawdata.write(i, 1, freq_offset/1e3)
                     self.sheet_rawdata.write(i, 2, sigGen_power-self.settings.cable_attenuation_dB)
-                    self.sheet_rawdata.write(i, 3, ber_percent)
+                    self.sheet_rawdata.write(i, 3, err_percent)
                     self.sheet_rawdata.write(i, 4, rssi)
                     i += 1
 
@@ -1280,30 +1296,33 @@ class FreqOffset_Sensitivity(Sensitivity):
                     record_df.to_csv(self.backup_csv_filename, mode='a', header=not path.exists(self.backup_csv_filename),index=False)
                     self.logger.info("\n"+record_df.to_string())
 
-                    if ber_percent >= 0.1:
+                    if err_percent >= self.settings.err_rate_threshold_percent:
 
                         self.sheet_sensdata.write(k, 0, frequency/1e6)
                         self.sheet_sensdata.write(k, 1, freq_offset/1e3)
                         self.sheet_sensdata.write(k, 2, sigGen_power-self.settings.cable_attenuation_dB)
-                        self.sheet_sensdata.write(k, 3, ber_percent)
+                        self.sheet_sensdata.write(k, 3, err_percent)
                         self.sheet_sensdata.write(k, 4, rssi)
                         k += 1
-                        break
+                        if self.settings.stop_at_no_signal:
+                            break
 
                     if done_percent == 0 and j == 1 and rssi == 0:                     
-                        print("BER measurement failed!")
+                        print(self.settings.err_rate_type + " measurement failed!")
                         ber_success = False
-                        break
+                        if self.settings.stop_at_no_signal:
+                            break
 
                     if done_percent == 0 and j > 1:
 
                         self.sheet_sensdata.write(k, 0, frequency/1e6)
                         self.sheet_sensdata.write(k, 1, freq_offset/1e3)
                         self.sheet_sensdata.write(k, 2, self.settings.siggen_power_list_dBm[j-2]-self.settings.cable_attenuation_dB)
-                        self.sheet_sensdata.write(k, 3, ber_percent)
+                        self.sheet_sensdata.write(k, 3, err_percent)
                         self.sheet_sensdata.write(k, 4, rssi)
                         k += 1
-                        break
+                        if self.settings.stop_at_no_signal:
+                            break
 
                     j += 1
 
@@ -1518,13 +1537,13 @@ class Waterfall(Sensitivity):
         self.sheet_rawdata = self.workbook.add_worksheet('RawData')
         self.sheet_rawdata.write(0, 0, 'Frequency [MHz]')
         self.sheet_rawdata.write(0, 1, 'Input Power [dBm]')
-        self.sheet_rawdata.write(0, 2, 'BER [%]')
+        self.sheet_rawdata.write(0, 2, self.settings.err_rate_type +' [%]')
         self.sheet_rawdata.write(0, 3, 'RSSI')
         
         self.sheet_sensdata = self.workbook.add_worksheet('SensData')
         self.sheet_sensdata.write(0, 0, 'Frequency [MHz]')
         self.sheet_sensdata.write(0, 1, 'Sensitivity [dBm]')
-        self.sheet_sensdata.write(0, 2, 'BER [%]')
+        self.sheet_sensdata.write(0, 2, self.settings.err_rate_type +' [%]')
         self.sheet_sensdata.write(0, 3, 'RSSI')
 
         self.row = 1
@@ -1551,7 +1570,7 @@ class Waterfall(Sensitivity):
             waterfall_raw_measurement_record = {
                     'Frequency [MHz]':freq/1e6,
                     'Input Power [dBm]':0,
-                    'BER [%]':0,
+                    self.settings.err_rate_type +' [%]':0,
                     'RSSI':0,     
                 }
             
@@ -1560,20 +1579,24 @@ class Waterfall(Sensitivity):
             for siggen_power in self.settings.siggen_power_list_dBm:
 
                 self.siggen.setAmplitude(siggen_power)
-                ber_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=freq)
-
+                if self.settings.err_rate_type == 'BER':
+                    err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=freq)
+                elif self.settings.err_rate_type == 'PER':
+                    err_percent,done_percent,rssi = self.wstk.measurePer(npackets=100,interpacket_delay_s = 0.001,frequency_Hz=freq,tx_start_function=self.siggen.sendTrigger)
+                else:
+                    raise TypeError('Not recognized error rate string!')
                 if i == 1 and done_percent == 0 and rssi == 0:
-                    print("BER measurement failed!")
+                    print(self.settings.err_rate_type + " measurement failed!")
                     ber_success = False
                     break
 
                 waterfall_raw_measurement_record['Input Power [dBm]'] = siggen_power-self.settings.cable_attenuation_dB
-                waterfall_raw_measurement_record['BER [%]'] = ber_percent
+                waterfall_raw_measurement_record[self.settings.err_rate_type +' [%]'] = err_percent
                 waterfall_raw_measurement_record['RSSI'] = rssi
 
                 self.sheet_rawdata.write(i, 0, freq/1e6)
                 self.sheet_rawdata.write(i, 1, siggen_power-self.settings.cable_attenuation_dB)
-                self.sheet_rawdata.write(i, 2, ber_percent)
+                self.sheet_rawdata.write(i, 2, err_percent)
                 self.sheet_rawdata.write(i, 3, rssi)
                 i += 1
 
@@ -1581,11 +1604,11 @@ class Waterfall(Sensitivity):
                 record_df.to_csv(self.backup_csv_filename, mode='a', header=not path.exists(self.backup_csv_filename),index=False)
                 self.logger.info("\n"+record_df.to_string())
 
-                if k == 1 and ber_percent >= 0.1:
+                if k == 1 and err_percent >= self.settings.err_rate_threshold_percent:
 
                         self.sheet_sensdata.write(j, 0, freq/1e6)
                         self.sheet_sensdata.write(j, 1, siggen_power-self.settings.cable_attenuation_dB)
-                        self.sheet_sensdata.write(j, 2, ber_percent)
+                        self.sheet_sensdata.write(j, 2, err_percent)
                         self.sheet_sensdata.write(j, 3, rssi)
                         j += 1
                         k += 1                       
