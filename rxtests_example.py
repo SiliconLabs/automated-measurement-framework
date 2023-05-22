@@ -1,11 +1,11 @@
-from rxtests_with_excel_plotting import Sensitivity, Blocking, FreqOffset_Sensitivity, RSSI_Sweep, Waterfall
+from rxtests import Sensitivity, Blocking, FreqOffset_Sensitivity, RSSI_Sweep, Waterfall
 from common import Logger, Level
 
 #################################################################################################################################################
 # Select the RX test options here:
 Measure_Sensitivity = False                          # Sensitivity measurement 
-Measure_Waterfall = False                           # Full waterfall measurement between defined input power levels
-Measure_Blocking_w_Sensitivity = True              # Sensitivity and Blocking measurements
+Measure_Waterfall = True                           # Full waterfall measurement between defined input power levels
+Measure_Blocking_w_Sensitivity = False              # Sensitivity and Blocking measurements
 Measure_Sensitivity_w_FrequencyOffset = False       # Sensitivity measurement with frequency offsets defined
 Measure_RSSI_Sweep = False                          # RSSI sweep versus input power and frequency
 # Perform crystal CTUNE tuning before the tests?
@@ -15,7 +15,7 @@ CTUNE_Tuning_w_SG = False                           # CTUNE tuning with the sign
 Chip_Name = 'EFR32FG23'                             # Chip name of DUT
 Board_Name = 'BRD4204D'                             # Board name of DUT
 # Test Equipment and DUT Address Settings
-WSTK_COM_Port = 'COM6'                              # WSTK board COM port
+WSTK_COM_Port = 'COM5'                              # WSTK board COM port
 SigGen_Address = 'GPIB1::5::INSTR'                  # Signal Generator address
 SpecAn_Address = 'TCPIP::169.254.88.77::INSTR'      # Spectrum Analyzer address
 # Desired Signal Test Frequencies
@@ -33,12 +33,12 @@ Freq_Deviation_Hz = 500e3                            # Frequency deviation in Hz
 Error_Rate_Type = 'BER'
 Stream_Type ='PN9'  
 Error_Rate_Threshold = 0.1
-Stop_at_NoSignal = True
+Plot_Bathtub = False
 #uncomment for PER
-#Error_Rate_Type = 'PER'
-#Stream_Type ='\"TEMP@BIT\"'                                 # for BER this should be 'PN9', for PER this is the packet name on the generator
-#Error_Rate_Threshold = 10
-#Stop_at_NoSignal = False
+# Error_Rate_Type = 'PER'
+# Stream_Type ='\"TEMP@BIT\"'                                 # for BER this should be 'PN9', for PER this is the packet name on the generator
+# Error_Rate_Threshold = 10
+# Plot_Bathtub = True
 # Cable losses
 Desired_Path_Cable_Attenuation_dB = 7               # cable loss on the desired signal path
 Blocker_Path_Cable_Attenuation_dB = 7               # cable loss on hte blocker signal path
@@ -55,8 +55,8 @@ Blocker_Power_Stop_dBm = -5                         # blocker signal stop power
 Blocker_Power_Num_Steps = 46                        # number of blocker power levels
 Blocker_Power_List_dBm = None                       # List of power points of the blocker signal. This list is used when given, if it is None then list is created from start, stop and steps defined above.
 # Offset frequencies for freq-offset sensitivitiy tests
-Frequency_Offset_Start_Hz = -2000                   # frequency offset start for offset-Sensitivity test
-Frequency_Offset_Stop_Hz = 2000                     # frequency offset stop for offset-Sensitivity test
+Frequency_Offset_Start_Hz = -2e3                  # frequency offset start for offset-Sensitivity test
+Frequency_Offset_Stop_Hz = 2e3                     # frequency offset stop for offset-Sensitivity test
 Frequency_Offset_Steps = 21                         # number of frequency offset steps during offset-Sensitivity test                      
 Frequency_Offset_List_Hz = None                   # List of frequency offsets. This list is used when given, if it is None then list is created from start, stop and steps defined above.
 # Input frequency settings for RSSI sweep tests
@@ -157,7 +157,7 @@ FreqOffset_sensitivity_settings = FreqOffset_Sensitivity.Settings(
     err_rate_type= Error_Rate_Type,
     err_rate_threshold_percent=Error_Rate_Threshold,
     siggen_stream_type=Stream_Type,
-    stop_at_no_signal=Stop_at_NoSignal,
+    plot_bathtub=Plot_Bathtub,
     freq_offset_logger_settings = Logger.Settings(logging_level=Level.INFO),
     siggen_logger_settings = Logger.Settings(logging_level=Level.DEBUG),
     specan_logger_settings = Logger.Settings(logging_level=Level.INFO),

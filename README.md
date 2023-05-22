@@ -245,6 +245,10 @@ The `FreqOffset_Sensitivity.Settings` dataclass containing the settings, is docu
 - `freq_offset_steps` (int): Frequency offset step values in Hz
 - `freq_offset_list_Hz` (list): Discrete frequency list option
 
+- `plot_bathtub` (bool): Plot Freq. Offset - Power - PER 3d graph, makes measurement slower, but sweeps every value, and generates html interactive plot
+
+- `bathtub_filename_html` (str): Name of aforementioned interactive plot, has to end with .html
+
 - `freq_offset_logger_settings` (Logger.Settings): Logger module settings for frequency offset measurement.
 
 ---

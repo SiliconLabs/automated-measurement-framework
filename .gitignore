@@ -7,3 +7,4 @@ app.log
 *.csv
 *.egg-info
 build/
+*.html
