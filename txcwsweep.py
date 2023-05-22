@@ -288,7 +288,9 @@ class TXCWSweep():
                 self.row = self.row + len(self.settings.pwr_levels) 
 
     def stop(self):
-        # if workbook already exists no need to close again
+        # delete wstk to release serial port
+        self.wstk.__del__()
+                # if workbook already exists no need to close again
         if not path.isfile(self.workbook_name):
             self.logger.info("excel workbook closed")
             if hasattr(self,'workbook'):

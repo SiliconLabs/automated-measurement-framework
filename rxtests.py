@@ -18,6 +18,10 @@ from common import Logger, Level
 import atexit
 from pyvisa import errors as visaerrors
 import serial
+import xlsxwriter
+import os
+from excel_plotter.plotly_functions import plot_bathtub
+
 
 class Sensitivity():
     """
@@ -25,8 +29,7 @@ class Sensitivity():
 
     Required instruments: 
     - SiLabs EFR with RAILTest configured
-    - Signal Generator, currently tested with HP E4432B generator.
-    - (optional) If CTUNE is done with Spectrum analyzer, then it is needed
+    - Signal Generator
     """
 
     @dataclass
@@ -47,6 +50,10 @@ class Sensitivity():
         :param bool measure_with_CTUNE_w_SA: Enable CTUNE with spectrum analyzer (more accurate)
         :param bool measure_with_CTUNE_w_SG: Enable CTUNE with signal generator (easier setup, faster)
 
+
+        :param str err_rate_type: 'BER' or 'PER', for PER the stream type should be a @BIT filename like "temp@BIT", use \"\"
+        :param float err_rate_threshold_percent: where the sensitivity threshold is reached, different for standards
+
         :param float cable_attenuation_dB: total cable loss in the test setup between SigGen and DUT
 
         :param float siggen_power_start_dBm: Start SigGen power, cable loss not included
@@ -65,6 +72,11 @@ class Sensitivity():
         :param str siggen_filter_type: "Gaussian" or "Nyquist" 
         :param float siggen_filter_BbT: Filter BT factor between 0 and 1
         :param bool siggen_custom_on: Custom mode one, for all SG functionality this should be on
+        :param str siggen_per_packet_filename: the name of the file on this PC, that contains the binary data of the test packet
+                                                Should be in the format of Saleae Logic analyzers csv export
+        :param str siggen_per_packet_siggen_name : what the name of the @BIT file will be on the generator itself
+        :param str siggen_pattern_repeat: continuous or single ( CONT or SING)
+        :param str siggen_trigger_type: KEY|BUS|EXT- triggerkey on generator, GPIB bus, or external, almost always use BUS
         :param Logger.Settings siggen_logger_settings: Logger module settings for SG, imported from common
         
         :param str specan_address: VISA address of Spectrum Analyzer,can check PyVISA documentation
@@ -87,10 +99,15 @@ class Sensitivity():
 
         #Cable attenutation setting
         cable_attenuation_dB: float = 2
+        cable_logger_settings: Logger.Settings = Logger.Settings()
         
         #sensitivity measurements with CTUNE
+        ctune_initial:int = None
         measure_with_CTUNE_w_SA: bool = False
         measure_with_CTUNE_w_SG: bool = False
+        #error rate settings
+        err_rate_type: str = 'BER' #suprise, other possible option is 'PER'
+        err_rate_threshold_percent:float = 0.1
 
         #SG settings 
         siggen_address: str = 'GPIB0::5::INSTR'
@@ -103,10 +120,14 @@ class Sensitivity():
         siggen_modulation_deviation_Hz: float = 50e3
         #siggen_rf_on = True
         #siggen_mod_on = True
-        siggen_stream_type = "PN9" #see all available stream modes by searching for "RADio:CUSTom:DATA" in https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf
-        siggen_filter_type = "Gaussian" #Gaussian or Nyquist
-        siggen_filter_BbT = 0.5
-        siggen_custom_on = True
+        siggen_stream_type:str = "PN9" #see all available stream modes by searching for "RADio:CUSTom:DATA" in https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf
+        siggen_filter_type:str = "Gaussian" #Gaussian or Nyquist
+        siggen_filter_BbT:float = 0.5
+        siggen_custom_on:bool = True
+        siggen_per_packet_filename :str = "pysiggen/packets/std_rail_packet.csv"
+        siggen_per_packet_siggen_name :str = "TEMP"
+        siggen_pattern_repeat:str = "SINGle"
+        siggen_trigger_type:str = "BUS"
         siggen_logger_settings: Logger.Settings = Logger.Settings()
 
         #SA settings
@@ -157,6 +178,9 @@ class Sensitivity():
         self.siggen.setDeviation(self.settings.siggen_modulation_deviation_Hz)
         self.siggen.setFilter(self.settings.siggen_filter_type)
         self.siggen.setFilterBbT(self.settings.siggen_filter_BbT)
+        self.siggen.setBinaryData(self.settings.siggen_per_packet_filename,self.settings.siggen_per_packet_siggen_name)
+        self.siggen.setPatternRepeat(self.settings.siggen_pattern_repeat)
+        self.siggen.setTriggerType(self.settings.siggen_trigger_type)
         self.siggen.setStreamType(self.settings.siggen_stream_type)
         self.siggen.toggleCustom(self.settings.siggen_custom_on)
         self.siggen.toggleModulation(False)
@@ -181,7 +205,7 @@ class Sensitivity():
         self.specan.setRefOffset(self.settings.specan_ref_offset)
     
     def initialize_wstk(self):
-        self.wstk = WSTK_RAILTest(self.settings.wstk_com_port,logger_settings=self.settings.wstk_logger_settings)
+        self.wstk = WSTK_RAILTest(self.settings.wstk_com_port,logger_settings=self.settings.wstk_logger_settings,reset=True)
 
         self.wstk._driver.reset()
         self.wstk._driver.rx(on_off=False)
@@ -214,13 +238,13 @@ class Sensitivity():
         self.sheet_rawdata = self.workbook.add_worksheet('RawData')
         self.sheet_rawdata.write(0, 0, 'Frequency [MHz]')
         self.sheet_rawdata.write(0, 1, 'Input Power [dBm]')
-        self.sheet_rawdata.write(0, 2, 'BER [%]')
+        self.sheet_rawdata.write(0, 2, self.settings.err_rate_type+' [%]')
         self.sheet_rawdata.write(0, 3, 'RSSI')
         
         self.sheet_sensdata = self.workbook.add_worksheet('SensData')
         self.sheet_sensdata.write(0, 0, 'Frequency [MHz]')
         self.sheet_sensdata.write(0, 1, 'Sensitivity [dBm]')
-        self.sheet_sensdata.write(0, 2, 'BER [%]')
+        self.sheet_sensdata.write(0, 2, self.settings.err_rate_type+' [%]')
         self.sheet_sensdata.write(0, 3, 'RSSI')
 
         self.row = 1
@@ -231,6 +255,74 @@ class Sensitivity():
         if path.exists(self.backup_csv_filename):
             remove(self.backup_csv_filename)
 
+    def Py_to_Excel_plotter(self):
+        # Import raw vs power data from existing xlsx
+        summary = pd.read_excel(self.workbook_name, sheet_name="Summary")
+        parameters = pd.read_excel(self.workbook_name, sheet_name="Parameters")
+        raw_data = pd.read_excel(self.workbook_name, sheet_name="RawData")
+        sens_data = pd.read_excel(self.workbook_name, sheet_name="SensData")
+        
+        # Create new xlsx with the imported data + the plots of it. Therefore, the code creates a new xlsx instead of writing into the imported xlsx.
+        output_workbook_name = "Plot" + self.workbook_name
+        workbook = xlsxwriter.Workbook(output_workbook_name)
+        Summary_Sheet = workbook.add_worksheet(name= 'Summary')
+        Parameters_Sheet = workbook.add_worksheet(name= 'Parameters')
+        Raw_Sheet = workbook.add_worksheet(name= 'RawData')
+        Sens_Sheet = workbook.add_worksheet(name= 'SensData')
+        Chart_Sheet = workbook.add_worksheet(name= 'Charts')
+        # Copy imported data to this new xlsx
+        col_name: str
+        for i, col_name in enumerate(raw_data.columns):
+            Raw_Sheet.write(0, i, col_name)
+            Raw_Sheet.write_column(1, i, raw_data[col_name])
+        col_name: str
+        for i, col_name in enumerate(sens_data.columns):
+            Sens_Sheet.write(0, i, col_name)
+            Sens_Sheet.write_column(1, i, sens_data[col_name])
+        col_name: str
+        for i, col_name in enumerate(parameters.columns):
+            Parameters_Sheet.write(0, i, col_name)
+            Parameters_Sheet.write_column(1, i, parameters[col_name])
+        col_name: str
+        for i, col_name in enumerate(summary.columns):
+            Summary_Sheet.write(0, i, col_name)
+            Summary_Sheet.write_column(1, i, summary[col_name])
+    
+        # Create empty plot for input power vs BER
+        plot = workbook.add_chart({"type" : "scatter"})
+        # Plot the Fundamental input power vs BER
+        plot.add_series({"categories" : "=RawData!$B$2:$B$10000",
+                    "values" : "=RawData!$C$2:$C$10000",
+                    "name" : self.settings.err_rate_type})
+        plot.set_x_axis({"name" : "Input Power [dBm]"})
+        plot.set_y_axis(({"name" : self.settings.err_rate_type+' [%]'}))
+        plot.set_title({'name': 'Waterfall', 'name_font':{'name':'Calibri(Body)','size':12}})
+        Chart_Sheet.insert_chart("A" + "1", plot, {'x_scale': 1.2, 'y_scale': 1.4})
+
+        # Create empty plot for frequency vs Sensitivity
+        plot_sens = workbook.add_chart({"type" : "scatter" , "subtype" : "straight"})
+        # Plot the Fundamental frequency vs Sensitivity
+        plot_sens.add_series({"categories" : "=SensData!$A$2:$A$10000",
+                    "values" : "=SensData!$B$2:$B$10000",
+                    "name" : "Sens."})
+        plot_sens.set_x_axis({"name" : "Frequency [MHz]"})
+        plot_sens.set_y_axis(({"name" : "Sensitivity [dBm]"}))
+        plot_sens.set_title({'name': 'Sensitivity vs Frequency', 'name_font':{'name':'Calibri(Body)','size':12}})
+        Chart_Sheet.insert_chart("A" + "22", plot_sens, {'x_scale': 1.2, 'y_scale': 1.4})
+        
+        # shaping and filtering
+        Parameters_Sheet.set_column(0, 13, 16)
+        Raw_Sheet.set_column(0, 13, 16)
+        Raw_Sheet.autofilter(0, 0, 10000, 0)
+        Sens_Sheet.set_column(0, 13, 16)
+        Sens_Sheet.autofilter(0, 0, 10000, 0)
+
+        workbook.close()
+
+        #replace original xlsx file with new xlsx file containing the plots
+        os.remove(self.workbook_name)
+        os.rename(output_workbook_name, self.workbook_name)
+    
     def initiate(self):
         
         self.siggen.toggleModulation(True)
@@ -247,27 +339,32 @@ class Sensitivity():
             sens_raw_measurement_record = {
                     'Frequency [MHz]':freq/1e6,
                     'Input Power [dBm]':0,
-                    'BER [%]':0,
+                    self.settings.err_rate_type+' [%]':0,
                     'RSSI':0,     
                 }
 
             for siggen_power in self.settings.siggen_power_list_dBm:
 
                 self.siggen.setAmplitude(siggen_power)
-                ber_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=freq)
 
+                if self.settings.err_rate_type == 'BER':
+                    err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=freq)
+                elif self.settings.err_rate_type == 'PER':
+                    err_percent,done_percent,rssi = self.wstk.measurePer(npackets=100,interpacket_delay_s = 0.001,frequency_Hz=freq,tx_start_function=self.siggen.sendTrigger)
+                else:
+                    raise TypeError('Not recognized error rate string!')
                 if i == 1 and done_percent == 0 and rssi == 0:
-                    self.logger.info("BER measurement failed!")
+                    print(self.settings.err_rate_type +" measurement failed!")
                     ber_success = False
                     break
 
                 sens_raw_measurement_record['Input Power [dBm]'] = siggen_power-self.settings.cable_attenuation_dB
-                sens_raw_measurement_record['BER [%]'] = ber_percent
+                sens_raw_measurement_record[self.settings.err_rate_type +' [%]'] = err_percent
                 sens_raw_measurement_record['RSSI'] = rssi
 
                 self.sheet_rawdata.write(i, 0, freq/1e6)
                 self.sheet_rawdata.write(i, 1, siggen_power-self.settings.cable_attenuation_dB)
-                self.sheet_rawdata.write(i, 2, ber_percent)
+                self.sheet_rawdata.write(i, 2, err_percent)
                 self.sheet_rawdata.write(i, 3, rssi)
                 i += 1
 
@@ -275,11 +372,11 @@ class Sensitivity():
                 record_df.to_csv(self.backup_csv_filename, mode='a', header=not path.exists(self.backup_csv_filename),index=False)
                 self.logger.info("\n"+record_df.to_string())
 
-                if ber_percent >= 0.1:
+                if err_percent >= self.settings.err_rate_threshold_percent:
 
                         self.sheet_sensdata.write(j, 0, freq/1e6)
                         self.sheet_sensdata.write(j, 1, siggen_power-self.settings.cable_attenuation_dB)
-                        self.sheet_sensdata.write(j, 2, ber_percent)
+                        self.sheet_sensdata.write(j, 2, err_percent)
                         self.sheet_sensdata.write(j, 3, rssi)
                         j += 1
 
@@ -458,8 +555,8 @@ class Sensitivity():
         self.logger.info("Tuned CTUNE value: " + str(ctuned))
         self.logger.info("Actual DUT frequency: " + str(marker_freq) + " Hz")
         self.logger.info("Frequency error: " + str(marker_freq - freq) + " Hz")
-        self.logger.info('\n')
-    
+
+        return ctuned    
     def ctune_w_sg(self):
 
         ctune_init = 120
@@ -468,7 +565,7 @@ class Sensitivity():
         freq = self.settings.freq_list_hz[0]
 
         self.siggen.setFrequency(freq)
-        self.siggen.setAmplitude(-30)
+        self.siggen.setAmplitude(-40)
         self.siggen.toggleModulation(True)
         self.siggen.toggleRFOut(True)
 
@@ -479,16 +576,20 @@ class Sensitivity():
         self.wstk._driver.rx(True)
         RSSI_max = self.wstk.readRSSI()
         ctuned = ctune_init
-        ctune_range = np.linspace(ctune_min, ctune_max, ctune_max-ctune_min+1, dtype=int)
+        ctune_range = np.linspace(ctune_min, ctune_max, 100, dtype=int)
         
         for ctune_item in ctune_range:
             ctune_actual = ctune_item
             self.wstk._driver.rx(False)
             self.wstk._driver.setCtune(ctune_actual)
             self.wstk._driver.rx(True)
-            RSSI_actual = self.wstk.readRSSI()
-            self.logger.info(ctune_actual)
-            self.logger.info(RSSI_actual)
+            try:
+                RSSI_actual = self.wstk.readRSSI()
+            except ValueError:
+                self.wstk._driver.rx(True)
+                RSSI_actual = self.wstk.readRSSI()
+                self.logger.debug("Caught RAIL bug getRSSI value error")
+            self.logger.debug("Actual CTUNE: " +str(ctune_actual)+", actual RSSI: "+ str(RSSI_actual))
             if RSSI_actual > RSSI_max:
                 RSSI_max = RSSI_actual
                 ctuned = ctune_actual
@@ -502,7 +603,7 @@ class Sensitivity():
 
         self.logger.info("Tuned CTUNE value: " + str(ctuned))
         self.logger.info("Max RSSI: " + str(RSSI_max) + " dBm")
-        self.logger.info('\n')
+
     
     def stop(self):
         # if workbook already exists no need to close again
@@ -570,16 +671,25 @@ class Sensitivity():
 
         if (self.settings.siggen_power_list_dBm[0] - self.settings.cable_attenuation_dB) > 10:
             raise ValueError("Too high input power injected!")
+        
+        if self.settings.ctune_initial is None:
 
-        if self.settings.measure_with_CTUNE_w_SA:
-            self.ctune_w_sa()
+            if self.settings.measure_with_CTUNE_w_SA:
+                self.ctune_w_sa()
+                self.logger.warn("Switch to SG!")
+                input()
 
-        if self.settings.measure_with_CTUNE_w_SG:
-            self.ctune_w_sg()
+            if self.settings.measure_with_CTUNE_w_SG:
+                self.ctune_w_sg()
+        else:
+            self.wstk._driver.setCtune(self.settings.ctune_initial)
+            self.logger.info("Set Ctune:"+str(self.settings.ctune_initial))
 
         self.initiate()
 
         self.stop()
+
+        self.Py_to_Excel_plotter()
 
         if ber_success:
             df = self.get_dataframe(self.backup_csv_filename)
@@ -593,33 +703,9 @@ class Sensitivity():
 
 
 class Blocking(Sensitivity):
-    """Measuring receiver blocking on different frequencies of the EFR32-based design.
-
-        Subclass of sensitivity, so all the parameters from before are inherited.
-    """
+    
     @dataclass
     class Settings(Sensitivity.Settings):
-        """
-        All configurable settings for this measurement. 
-
-        Sweepable variables can be configured using start,stop and steps parameters
-        or by a list. If a list is not initialized, the start/stop parameters will be used. 
-
-        :param int blocker_offset_start_freq_Hz: Blocker frequency offset stop value in hz
-        :param int blocker_offset_stop_freq_Hz: Blocker frequency offset stop value in hz
-        :param int blocker_offset_freq_steps: Blocker frequency offset step values
-        :param list blocker_offset_freq_list_Hz: Blocker frequency discrete list option
-
-        :param float blocker_cable_attenuation_dB: Attenuation from the blocker generator to the DUT
-
-        :param float blocker_start_power_dBm: Blocker start power value in dbm, without the cable attenution
-        :param float blocker_stop_power_dBm: Blocker stop power value in dbm, without the cable attenution
-        :param int blocker_power_steps: Blocker power value steps 
-        :param list blocker_power_list_dBm: Blocker power discrete list option
-
-        :param Logger.Settings blocker_logger_settings: Logger module settings for blocking measurement, imported from common
-        
-        """
 
         desired_power_relative_to_sens_during_blocking_test_dB: float = 3  #blocking test when desired power is above the senitivity level by this value
         
@@ -706,7 +792,7 @@ class Blocking(Sensitivity):
         self.sheet_rawdata = self.workbook.add_worksheet('RawData')
         self.sheet_rawdata.write(0, 0, 'Frequency [MHz]')
         self.sheet_rawdata.write(0, 1, 'Input Power [dBm]')
-        self.sheet_rawdata.write(0, 2, 'BER [%]')
+        self.sheet_rawdata.write(0, 2, self.settings.err_rate_type +' [%]')
         self.sheet_rawdata.write(0, 3, 'RSSI')
         self.sheet_rawdata.write(0, 4, 'Blocker Freq. Offset [MHz]')
         self.sheet_rawdata.write(0, 5, 'Blocker Abs. Power [dBm]')
@@ -714,7 +800,7 @@ class Blocking(Sensitivity):
         self.sheet_sensdata = self.workbook.add_worksheet('SensData')
         self.sheet_sensdata.write(0, 0, 'Frequency [MHz]')
         self.sheet_sensdata.write(0, 1, 'Sensitivity [dBm]')
-        self.sheet_sensdata.write(0, 2, 'BER [%]')
+        self.sheet_sensdata.write(0, 2, self.settings.err_rate_type +' [%]')
         self.sheet_sensdata.write(0, 3, 'RSSI')
 
         self.sheet_blockingdata = self.workbook.add_worksheet('BlockingData')
@@ -722,7 +808,7 @@ class Blocking(Sensitivity):
         self.sheet_blockingdata.write(0, 1, 'Input Power [dBm]')
         self.sheet_blockingdata.write(0, 2, 'Blocker Freq. Offset [MHz]')
         self.sheet_blockingdata.write(0, 3, 'Blocker Abs. Power [dBm]')
-        self.sheet_blockingdata.write(0, 4, 'BER [%]')
+        self.sheet_blockingdata.write(0, 4, self.settings.err_rate_type +' [%]')
 
         self.row = 1
 
@@ -731,6 +817,85 @@ class Blocking(Sensitivity):
         if path.exists(self.backup_csv_filename):
             remove(self.backup_csv_filename)
 
+    def Py_to_Excel_plotter(self):
+        # Import raw vs power data from existing xlsx
+        summary = pd.read_excel(self.workbook_name, sheet_name="Summary")
+        parameters = pd.read_excel(self.workbook_name, sheet_name="Parameters")
+        raw_data = pd.read_excel(self.workbook_name, sheet_name="RawData")
+        sens_data = pd.read_excel(self.workbook_name, sheet_name="SensData")
+        blocking_data = pd.read_excel(self.workbook_name, sheet_name="BlockingData")
+        
+        # Create new xlsx with the imported data + the plots of it. Therefore, the code creates a new xlsx instead of writing into the imported xlsx.
+        output_workbook_name = "Plot" + self.workbook_name
+        workbook = xlsxwriter.Workbook(output_workbook_name)
+        Summary_Sheet = workbook.add_worksheet(name= 'Summary')
+        Parameters_Sheet = workbook.add_worksheet(name= 'Parameters')
+        Raw_Sheet = workbook.add_worksheet(name= 'RawData')
+        Sens_Sheet = workbook.add_worksheet(name= 'SensData')
+        Blocking_Sheet = workbook.add_worksheet(name= 'BlockingData')
+        Chart_Sheet = workbook.add_worksheet(name= 'Charts')
+        # Copy imported data to this new xlsx
+        col_name: str
+        for i, col_name in enumerate(raw_data.columns):
+            Raw_Sheet.write(0, i, col_name)
+            Raw_Sheet.write_column(1, i, raw_data[col_name])
+        col_name: str
+        for i, col_name in enumerate(sens_data.columns):
+            Sens_Sheet.write(0, i, col_name)
+            Sens_Sheet.write_column(1, i, sens_data[col_name])
+        col_name: str
+        for i, col_name in enumerate(blocking_data.columns):
+            Blocking_Sheet.write(0, i, col_name)
+            Blocking_Sheet.write_column(1, i, blocking_data[col_name])
+        col_name: str
+        for i, col_name in enumerate(parameters.columns):
+            Parameters_Sheet.write(0, i, col_name)
+            Parameters_Sheet.write_column(1, i, parameters[col_name])
+        col_name: str
+        for i, col_name in enumerate(summary.columns):
+            Summary_Sheet.write(0, i, col_name)
+            Summary_Sheet.write_column(1, i, summary[col_name])
+    
+        # Create empty plot for blocking
+        plot = workbook.add_chart({"type" : "scatter"})
+        # Plot the blocking
+        plot.add_series({"categories" : "=BlockingData!$C$2:$C$10000",
+                    "values" : "=BlockingData!$D$2:$D$10000",
+                    "name" : "Blocking"})
+        plot.set_x_axis({"name" : "Blocker Freq. Offset [MHz]"})
+        plot.set_y_axis(({"name" : "Blocker Abs. Power [dBm]"}))
+        plot.set_title({'name': 'Blocking vs Freq. Offset', 'name_font':{'name':'Calibri(Body)','size':12}})
+        Chart_Sheet.insert_chart("A" + "1", plot, {'x_scale': 1.2, 'y_scale': 1.4})
+
+        # Create empty plot for frequency vs Sensitivity
+        plot_sens = workbook.add_chart({"type" : "scatter" , "subtype" : "straight"})
+        # Plot the Fundamental frequency vs Sensitivity
+        plot_sens.add_series({"categories" : "=SensData!$A$2:$A$10000",
+                    "values" : "=SensData!$B$2:$B$10000",
+                    "name" : "Sens."})
+        plot_sens.set_x_axis({"name" : "Frequency [MHz]"})
+        plot_sens.set_y_axis(({"name" : "Sensitivity [dBm]"}))
+        plot_sens.set_title({'name': 'Sensitivity vs Frequency', 'name_font':{'name':'Calibri(Body)','size':12}})
+        Chart_Sheet.insert_chart("A" + "22", plot_sens, {'x_scale': 1.2, 'y_scale': 1.4})
+        
+        # shaping and filtering
+        Parameters_Sheet.set_column(0, 13, 16)
+        Raw_Sheet.set_column(0, 13, 25)
+        Raw_Sheet.autofilter(0, 0, 10000, 0)
+        Raw_Sheet.autofilter(0, 5, 10000, 0)
+        Sens_Sheet.set_column(0, 13, 20)
+        Sens_Sheet.autofilter(0, 0, 10000, 0)
+        Sens_Sheet.autofilter(0, 2, 10000, 0)
+        Blocking_Sheet.set_column(0, 13, 25)
+        Blocking_Sheet.autofilter(0, 0, 10000, 0)
+        Blocking_Sheet.autofilter(0, 4, 10000, 0)
+
+        workbook.close()
+
+        #replace original xlsx file with new xlsx file containing the plots
+        os.remove(self.workbook_name)
+        os.rename(output_workbook_name, self.workbook_name)
+    
     def initiate(self):
         
         self.siggen.toggleModulation(True)
@@ -748,7 +913,7 @@ class Blocking(Sensitivity):
             blocking_raw_measurement_record = {
                     'Frequency [MHz]':frequency/1e6,
                     'Input Power [dBm]':0,
-                    'BER [%]':0,
+                    self.settings.err_rate_type +' [%]':0,
                     'RSSI':0,
                     'Blocker Freq. Offset [MHz]':0,
                     'Blocker Abs. Power [dBm]':0,     
@@ -758,22 +923,26 @@ class Blocking(Sensitivity):
                 
                 self.siggen.setAmplitude(sigGen_power)
                 
-                ber_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
-
+                if self.settings.err_rate_type == 'BER':
+                    err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
+                elif self.settings.err_rate_type == 'PER':
+                    err_percent,done_percent,rssi = self.wstk.measurePer(npackets=100,interpacket_delay_s = 0.001,frequency_Hz=frequency,tx_start_function=self.siggen.sendTrigger)
+                else:
+                    raise TypeError('Not recognized error rate string!')
                 if i == 1 and done_percent == 0 and rssi == 0:
-                    self.logger.info("BER measurement failed!")
+                    print(self.settings.err_rate_type +" measurement failed!")
                     ber_success = False
                     break
 
                 blocking_raw_measurement_record['Input Power [dBm]'] = sigGen_power-self.settings.cable_attenuation_dB
-                blocking_raw_measurement_record['BER [%]'] = ber_percent
+                blocking_raw_measurement_record[self.settings.err_rate_type +' [%]'] = err_percent
                 blocking_raw_measurement_record['RSSI'] = rssi
                 blocking_raw_measurement_record['Blocker Freq. Offset [MHz]'] = " "
                 blocking_raw_measurement_record['Blocker Abs. Power [dBm]'] = " "
                 
                 self.sheet_rawdata.write(i, 0, frequency/1e6)
                 self.sheet_rawdata.write(i, 1, sigGen_power-self.settings.cable_attenuation_dB)
-                self.sheet_rawdata.write(i, 2, ber_percent)
+                self.sheet_rawdata.write(i, 2, err_percent)
                 self.sheet_rawdata.write(i, 3, rssi)
                 self.sheet_rawdata.write(i, 4, " ")
                 self.sheet_rawdata.write(i, 5, " ")
@@ -783,11 +952,11 @@ class Blocking(Sensitivity):
                 record_df.to_csv(self.backup_csv_filename, mode='a', header=not path.exists(self.backup_csv_filename),index=False)
                 self.logger.info("\n"+record_df.to_string())
 
-                if ber_percent >= 0.1:
+                if err_percent >= self.settings.err_rate_threshold_percent:
 
                     self.sheet_sensdata.write(j, 0, frequency/1e6)
                     self.sheet_sensdata.write(j, 1, sigGen_power - self.settings.cable_attenuation_dB)
-                    self.sheet_sensdata.write(j, 2, ber_percent)
+                    self.sheet_sensdata.write(j, 2, err_percent)
                     self.sheet_sensdata.write(j, 3, rssi)
                     j += 1
 
@@ -803,22 +972,26 @@ class Blocking(Sensitivity):
                 for blocker_power in self.settings.blocker_power_list_dBm:
 
                     self.specan.setSigGenPower_dBm(blocker_power)
-                    ber_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
-
+                    if self.settings.err_rate_type == 'BER':
+                        err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
+                    elif self.settings.err_rate_type == 'PER':
+                        err_percent,done_percent,rssi = self.wstk.measurePer(npackets=100,interpacket_delay_s = 0.001,frequency_Hz=frequency,tx_start_function=self.siggen.sendTrigger)
+                    else:
+                        raise TypeError('Not recognized error rate string!')
                     if i == 1 and done_percent == 0 and rssi == 0:
-                        self.logger.info("BER measurement failed, blocking test cancelled!")
+                        print(self.settings.err_rate_type + " measurement failed, blocking test cancelled!")
                         ber_success = False
                         break
                    
                     blocking_raw_measurement_record['Input Power [dBm]'] = sigGen_power + self.settings.desired_power_relative_to_sens_during_blocking_test_dB - self.settings.cable_attenuation_dB
-                    blocking_raw_measurement_record['BER [%]'] = ber_percent
+                    blocking_raw_measurement_record[self.settings.err_rate_type +' [%]'] = err_percent
                     blocking_raw_measurement_record['RSSI'] = rssi
                     blocking_raw_measurement_record['Blocker Freq. Offset [MHz]'] = blocker_offset_freq/1e6
                     blocking_raw_measurement_record['Blocker Abs. Power [dBm]'] = blocker_power-self.settings.blocker_cable_attenuation_dB
                     
                     self.sheet_rawdata.write(i, 0, frequency/1e6)
                     self.sheet_rawdata.write(i, 1, sigGen_power + self.settings.desired_power_relative_to_sens_during_blocking_test_dB - self.settings.cable_attenuation_dB)
-                    self.sheet_rawdata.write(i, 2, ber_percent)
+                    self.sheet_rawdata.write(i, 2, err_percent)
                     self.sheet_rawdata.write(i, 3, rssi)
                     self.sheet_rawdata.write(i, 4, blocker_offset_freq/1e6)
                     self.sheet_rawdata.write(i, 5, blocker_power-self.settings.blocker_cable_attenuation_dB)
@@ -828,13 +1001,13 @@ class Blocking(Sensitivity):
                     record_df.to_csv(self.backup_csv_filename, mode='a', header=not path.exists(self.backup_csv_filename),index=False)
                     self.logger.info("\n"+record_df.to_string())
 
-                    if ber_percent >= 0.1:
+                    if err_percent >= self.settings.err_rate_threshold_percent:
 
                         self.sheet_blockingdata.write(k, 0, frequency/1e6)
                         self.sheet_blockingdata.write(k, 1, sigGen_power + self.settings.desired_power_relative_to_sens_during_blocking_test_dB - self.settings.cable_attenuation_dB)
                         self.sheet_blockingdata.write(k, 2, blocker_offset_freq/1e6)
                         self.sheet_blockingdata.write(k, 3, blocker_power-self.settings.blocker_cable_attenuation_dB)
-                        self.sheet_blockingdata.write(k, 4, ber_percent)
+                        self.sheet_blockingdata.write(k, 4, err_percent)
                         k += 1
 
                         break
@@ -918,6 +1091,8 @@ class Blocking(Sensitivity):
 
         self.stop()
 
+        self.Py_to_Excel_plotter()
+
         if ber_success:
             df = self.get_dataframe(self.backup_csv_filename)
             self.logger.debug(df.to_string())
@@ -932,24 +1107,15 @@ class FreqOffset_Sensitivity(Sensitivity):
     
     @dataclass
     class Settings(Sensitivity.Settings):
-        """
-        All configurable settings for this measurement. 
 
-        Sweepable variables can be configured using start,stop and steps parameters
-        or by a list. If a list is not initialized, the start/stop parameters will be used. 
-
-        :param int freq_offset_start_Hz: Frequency offset stop value in hz
-        :param int freq_offset_stop_Hz: Frequency offset stop value in hz
-        :param int freq_offset_steps: Frequency offset step values in hz
-        :param list freq_offset_list_Hz: Discrete frequency list option
-
-        :param Logger.Settings freq_offset_logger_settings: Logger module settings for freqency offset measurement, imported from common
-        """
         freq_offset_start_Hz: int = -100e3   
         freq_offset_stop_Hz: int = 100e3     
         freq_offset_steps: int = 21
         freq_offset_list_Hz: list|None = None
 
+
+        plot_bathtub:bool = False # makes measurement MUCH slower, but sweeps every value, and generates html interactive plot
+        bathtub_filename_html = "frequency_offset_3d.html"
         freq_offset_logger_settings: Logger.Settings = Logger.Settings()
                 
 
@@ -1005,14 +1171,14 @@ class FreqOffset_Sensitivity(Sensitivity):
         self.sheet_rawdata.write(0, 0, 'Frequency [MHz]')
         self.sheet_rawdata.write(0, 1, 'Freq. Offset [kHz]')
         self.sheet_rawdata.write(0, 2, 'Input Power [dBm]')
-        self.sheet_rawdata.write(0, 3, 'BER [%]')
+        self.sheet_rawdata.write(0, 3, self.settings.err_rate_type +' [%]')
         self.sheet_rawdata.write(0, 4, 'RSSI')
         
         self.sheet_sensdata = self.workbook.add_worksheet('SensData')
         self.sheet_sensdata.write(0, 0, 'Frequency [MHz]')
         self.sheet_sensdata.write(0, 1, 'Freq. Offset [kHz]')
         self.sheet_sensdata.write(0, 2, 'Sensitivity [dBm]')
-        self.sheet_sensdata.write(0, 3, 'BER [%]')
+        self.sheet_sensdata.write(0, 3, self.settings.err_rate_type +' [%]')
         self.sheet_sensdata.write(0, 4, 'RSSI')
 
         self.row = 1
@@ -1022,8 +1188,67 @@ class FreqOffset_Sensitivity(Sensitivity):
         if path.exists(self.backup_csv_filename):
             remove(self.backup_csv_filename)
 
-    def initiate(self):
+    def Py_to_Excel_plotter(self):
+        # Import raw vs power data from existing xlsx
+        summary = pd.read_excel(self.workbook_name, sheet_name="Summary")
+        parameters = pd.read_excel(self.workbook_name, sheet_name="Parameters")
+        raw_data = pd.read_excel(self.workbook_name, sheet_name="RawData")
+        sens_data = pd.read_excel(self.workbook_name, sheet_name="SensData")
         
+        # Create new xlsx with the imported data + the plots of it. Therefore, the code creates a new xlsx instead of writing into the imported xlsx.
+        output_workbook_name = "Plot" + self.workbook_name
+        workbook = xlsxwriter.Workbook(output_workbook_name)
+        Summary_Sheet = workbook.add_worksheet(name= 'Summary')
+        Parameters_Sheet = workbook.add_worksheet(name= 'Parameters')
+        Raw_Sheet = workbook.add_worksheet(name= 'RawData')
+        Sens_Sheet = workbook.add_worksheet(name= 'SensData')
+        Chart_Sheet = workbook.add_worksheet(name= 'Charts')
+        # Copy imported data to this new xlsx
+        col_name: str
+        for i, col_name in enumerate(sens_data.columns):
+            Sens_Sheet.write(0, i, col_name)
+            Sens_Sheet.write_column(1, i, sens_data[col_name])
+        col_name: str
+        for i, col_name in enumerate(raw_data.columns):
+            Raw_Sheet.write(0, i, col_name)
+            Raw_Sheet.write_column(1, i, raw_data[col_name])
+        col_name: str
+        for i, col_name in enumerate(parameters.columns):
+            Parameters_Sheet.write(0, i, col_name)
+            Parameters_Sheet.write_column(1, i, parameters[col_name])
+        col_name: str
+        for i, col_name in enumerate(summary.columns):
+            Summary_Sheet.write(0, i, col_name)
+            Summary_Sheet.write_column(1, i, summary[col_name])
+
+        # Create empty plot for frequency-offset vs Sensitivity
+        plot_sens = workbook.add_chart({"type" : "scatter"})
+        # Plot the Fundamental frequency-offset vs Sensitivity
+        plot_sens.add_series({"categories" : "=SensData!$B$2:$B$10000",
+                    "values" : "=SensData!$C$2:$C$10000",
+                    "name" : "Sens."})
+        plot_sens.set_x_axis({"name" : "Frequency-offset [kHz]"})
+        plot_sens.set_y_axis(({"name" : "Sensitivity [dBm]"}))
+        plot_sens.set_title({'name': 'Sensitivity vs Frequency-offset', 'name_font':{'name':'Calibri(Body)','size':12}})
+        Chart_Sheet.insert_chart("A" + "1", plot_sens, {'x_scale': 1.2, 'y_scale': 1.4})
+        
+        # shaping and filtering
+        Parameters_Sheet.set_column(0, 13, 16)
+        Raw_Sheet.set_column(0, 13, 16)
+        Sens_Sheet.autofilter(0, 0, 10000, 0)
+        Sens_Sheet.set_column(0, 13, 16)
+
+        workbook.close()
+
+        if self.settings.plot_bathtub:
+            plot_bathtub(self.backup_csv_filename,self.settings.bathtub_filename_html)
+            self.logger.info("Freq. Offset Tolerance interactive 3D plot saved in "+ self.settings.bathtub_filename_html)
+
+        #replace original xlsx file with new xlsx file containing the plots
+        os.remove(self.workbook_name)
+        os.rename(output_workbook_name, self.workbook_name)
+    
+    def initiate(self):
         self.siggen.toggleModulation(True)
         self.siggen.toggleRFOut(True)
         global ber_success
@@ -1039,7 +1264,7 @@ class FreqOffset_Sensitivity(Sensitivity):
                     'Frequency [MHz]':frequency/1e6,
                     'Freq. Offset [kHz]':0,
                     'Input Power [dBm]':0,
-                    'BER [%]':0,
+                     self.settings.err_rate_type + ' [%]':0,
                     'RSSI':0,   
                 }
 
@@ -1051,18 +1276,23 @@ class FreqOffset_Sensitivity(Sensitivity):
                 for sigGen_power in self.settings.siggen_power_list_dBm:
                     
                     self.siggen.setAmplitude(sigGen_power)
-                    
-                    ber_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
 
+                    if self.settings.err_rate_type == 'BER':
+                        err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
+                    elif self.settings.err_rate_type == 'PER':
+                        err_percent,done_percent,rssi = self.wstk.measurePer(npackets=100,interpacket_delay_s = 0.001,frequency_Hz=frequency,tx_start_function=self.siggen.sendTrigger)
+                    else:
+                        raise TypeError('Not recognized error rate string!')
+                    
                     freqoffset_sens_raw_measurement_record['Freq. Offset [kHz]'] = freq_offset/1e3
                     freqoffset_sens_raw_measurement_record['Input Power [dBm]'] = sigGen_power-self.settings.cable_attenuation_dB
-                    freqoffset_sens_raw_measurement_record['BER [%]'] = ber_percent
+                    freqoffset_sens_raw_measurement_record[self.settings.err_rate_type + ' [%]'] = err_percent
                     freqoffset_sens_raw_measurement_record['RSSI'] = rssi
                     
                     self.sheet_rawdata.write(i, 0, frequency/1e6)
                     self.sheet_rawdata.write(i, 1, freq_offset/1e3)
                     self.sheet_rawdata.write(i, 2, sigGen_power-self.settings.cable_attenuation_dB)
-                    self.sheet_rawdata.write(i, 3, ber_percent)
+                    self.sheet_rawdata.write(i, 3, err_percent)
                     self.sheet_rawdata.write(i, 4, rssi)
                     i += 1
 
@@ -1070,30 +1300,33 @@ class FreqOffset_Sensitivity(Sensitivity):
                     record_df.to_csv(self.backup_csv_filename, mode='a', header=not path.exists(self.backup_csv_filename),index=False)
                     self.logger.info("\n"+record_df.to_string())
 
-                    if ber_percent >= 0.1:
+                    if err_percent >= self.settings.err_rate_threshold_percent:
 
                         self.sheet_sensdata.write(k, 0, frequency/1e6)
                         self.sheet_sensdata.write(k, 1, freq_offset/1e3)
                         self.sheet_sensdata.write(k, 2, sigGen_power-self.settings.cable_attenuation_dB)
-                        self.sheet_sensdata.write(k, 3, ber_percent)
+                        self.sheet_sensdata.write(k, 3, err_percent)
                         self.sheet_sensdata.write(k, 4, rssi)
                         k += 1
-                        break
+                        if not self.settings.plot_bathtub: # for bathtub a full sweep is needed
+                            break
 
                     if done_percent == 0 and j == 1 and rssi == 0:                     
-                        self.logger.info("BER measurement failed!")
+                        print(self.settings.err_rate_type + " measurement failed!")
                         ber_success = False
-                        break
+                        if not self.settings.plot_bathtub: # for bathtub a full sweep is needed
+                            break
 
                     if done_percent == 0 and j > 1:
 
                         self.sheet_sensdata.write(k, 0, frequency/1e6)
                         self.sheet_sensdata.write(k, 1, freq_offset/1e3)
                         self.sheet_sensdata.write(k, 2, self.settings.siggen_power_list_dBm[j-2]-self.settings.cable_attenuation_dB)
-                        self.sheet_sensdata.write(k, 3, ber_percent)
+                        self.sheet_sensdata.write(k, 3, err_percent)
                         self.sheet_sensdata.write(k, 4, rssi)
                         k += 1
-                        break
+                        if not self.settings.plot_bathtub: # for bathtub a full sweep is needed
+                            break
 
                     j += 1
 
@@ -1103,17 +1336,6 @@ class RSSI_Sweep(Sensitivity):
     
     @dataclass
     class Settings(Sensitivity.Settings):
-        """
-        All configurable settings for this measurement. 
-
-        Sweepable variables can be configured using start,stop and steps parameters
-        or by a list. If a list is not initialized, the start/stop parameters will be used. 
-
-        :param int siggen_freq_start_Hz: SG frequency stop value in hz
-        :param int siggen_freq_stop_Hz: SG frequency stop value in hz
-        :param int siggen_freq_steps: SG frequency step values in hz
-        :param list siggen_freq_list_Hz: Discrete frequency list option
-        """
         
         siggen_freq_start_Hz: int = 868e6   
         siggen_freq_stop_Hz: int = 928e6     
@@ -1174,6 +1396,58 @@ class RSSI_Sweep(Sensitivity):
         if path.exists(self.backup_csv_filename):
             remove(self.backup_csv_filename)
     
+    def Py_to_Excel_plotter(self):
+        # Import raw vs power data from existing xlsx
+        summary = pd.read_excel(self.workbook_name, sheet_name="Summary")
+        raw_data = pd.read_excel(self.workbook_name, sheet_name="RawData")
+        # Create new xlsx with the imported data + the plots of it. Therefore, the code creates a new xlsx instead of writing into the imported xlsx.
+        output_workbook_name = "Plot" + self.workbook_name
+        workbook = xlsxwriter.Workbook(output_workbook_name)
+        Summary_Sheet = workbook.add_worksheet(name= 'Summary')
+        Raw_Sheet = workbook.add_worksheet(name= 'RawData')
+        Chart_Sheet = workbook.add_worksheet(name= 'Charts')
+        # Copy imported data to this new xlsx
+        col_name: str
+        for i, col_name in enumerate(raw_data.columns):
+            Raw_Sheet.write(0, i, col_name)
+            Raw_Sheet.write_column(1, i, raw_data[col_name])
+        col_name: str
+        for i, col_name in enumerate(summary.columns):
+            Summary_Sheet.write(0, i, col_name)
+            Summary_Sheet.write_column(1, i, summary[col_name])
+    
+        # Create empty freq plot
+        plot = workbook.add_chart({"type" : "scatter"})
+        # Plotting
+        plot.add_series({"categories" : "=RawData!$B$2:$B$10000",
+                    "values" : "=RawData!$D$2:$D$10000",
+                    "name" : "RSSI vs Frequency"})
+        plot.set_x_axis({"name" : "Frequency [MHz]"})
+        plot.set_y_axis(({"name" : "RSSI"}))
+        plot.set_title({'name': 'RSSI vs Frequency', 'name_font':{'name':'Calibri(Body)','size':12}})
+        Chart_Sheet.insert_chart("A" + "1", plot, {'x_scale': 1.2, 'y_scale': 1.4})
+
+        # Create empty power plot
+        plot = workbook.add_chart({"type" : "scatter"})
+        # Plotting
+        plot.add_series({"categories" : "=RawData!$C$2:$C$10000",
+                    "values" : "=RawData!$D$2:$D$10000",
+                    "name" : "RSSI vs Power"})
+        plot.set_x_axis({"name" : "Power input [dBm]"})
+        plot.set_y_axis(({"name" : "RSSI"}))
+        plot.set_title({'name': 'RSSI vs Power', 'name_font':{'name':'Calibri(Body)','size':12}})
+        Chart_Sheet.insert_chart("A" + "22", plot, {'x_scale': 1.2, 'y_scale': 1.4})
+        
+        # shaping and filtering
+        Raw_Sheet.set_column(0, 13, 20)
+        Raw_Sheet.autofilter(0, 2, 10000, 0)
+
+        workbook.close()
+
+        #replace original xlsx file with new xlsx file containing the plots
+        os.remove(self.workbook_name)
+        os.rename(output_workbook_name, self.workbook_name)
+    
     def initiate(self):
             
         self.siggen.toggleModulation(True)
@@ -1184,8 +1458,8 @@ class RSSI_Sweep(Sensitivity):
 
         for frequency in self.settings.freq_list_hz:
 
-            self.wstk.receive(on_off=True, frequency_Hz=frequency, timeout_ms=100)
-            sleep(0.2)
+            self.wstk.receive(on_off=True, frequency_Hz=frequency, timeout_ms=1000)
+            sleep(0.1)
             self.wstk._driver.rx(True)
 
             rssi_sweep_raw_measurement_record = {
@@ -1202,7 +1476,7 @@ class RSSI_Sweep(Sensitivity):
                 for sigGen_power in self.settings.siggen_power_list_dBm:
                         
                     self.siggen.setAmplitude(sigGen_power)
-                    sleep(0.2)
+                    sleep(0.1)
                     rssi_value = self.wstk.readRSSI()
                     sleep(0.2)
 
@@ -1267,13 +1541,13 @@ class Waterfall(Sensitivity):
         self.sheet_rawdata = self.workbook.add_worksheet('RawData')
         self.sheet_rawdata.write(0, 0, 'Frequency [MHz]')
         self.sheet_rawdata.write(0, 1, 'Input Power [dBm]')
-        self.sheet_rawdata.write(0, 2, 'BER [%]')
+        self.sheet_rawdata.write(0, 2, self.settings.err_rate_type +' [%]')
         self.sheet_rawdata.write(0, 3, 'RSSI')
         
         self.sheet_sensdata = self.workbook.add_worksheet('SensData')
         self.sheet_sensdata.write(0, 0, 'Frequency [MHz]')
         self.sheet_sensdata.write(0, 1, 'Sensitivity [dBm]')
-        self.sheet_sensdata.write(0, 2, 'BER [%]')
+        self.sheet_sensdata.write(0, 2, self.settings.err_rate_type +' [%]')
         self.sheet_sensdata.write(0, 3, 'RSSI')
 
         self.row = 1
@@ -1300,7 +1574,7 @@ class Waterfall(Sensitivity):
             waterfall_raw_measurement_record = {
                     'Frequency [MHz]':freq/1e6,
                     'Input Power [dBm]':0,
-                    'BER [%]':0,
+                    self.settings.err_rate_type +' [%]':0,
                     'RSSI':0,     
                 }
             
@@ -1309,20 +1583,24 @@ class Waterfall(Sensitivity):
             for siggen_power in self.settings.siggen_power_list_dBm:
 
                 self.siggen.setAmplitude(siggen_power)
-                ber_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=freq)
-
+                if self.settings.err_rate_type == 'BER':
+                    err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=freq)
+                elif self.settings.err_rate_type == 'PER':
+                    err_percent,done_percent,rssi = self.wstk.measurePer(npackets=100,interpacket_delay_s = 0.001,frequency_Hz=freq,tx_start_function=self.siggen.sendTrigger)
+                else:
+                    raise TypeError('Not recognized error rate string!')
                 if i == 1 and done_percent == 0 and rssi == 0:
-                    self.logger.info("BER measurement failed!")
+                    print(self.settings.err_rate_type + " measurement failed!")
                     ber_success = False
                     break
 
                 waterfall_raw_measurement_record['Input Power [dBm]'] = siggen_power-self.settings.cable_attenuation_dB
-                waterfall_raw_measurement_record['BER [%]'] = ber_percent
+                waterfall_raw_measurement_record[self.settings.err_rate_type +' [%]'] = err_percent
                 waterfall_raw_measurement_record['RSSI'] = rssi
 
                 self.sheet_rawdata.write(i, 0, freq/1e6)
                 self.sheet_rawdata.write(i, 1, siggen_power-self.settings.cable_attenuation_dB)
-                self.sheet_rawdata.write(i, 2, ber_percent)
+                self.sheet_rawdata.write(i, 2, err_percent)
                 self.sheet_rawdata.write(i, 3, rssi)
                 i += 1
 
@@ -1330,11 +1608,11 @@ class Waterfall(Sensitivity):
                 record_df.to_csv(self.backup_csv_filename, mode='a', header=not path.exists(self.backup_csv_filename),index=False)
                 self.logger.info("\n"+record_df.to_string())
 
-                if k == 1 and ber_percent >= 0.1:
+                if k == 1 and err_percent >= self.settings.err_rate_threshold_percent:
 
                         self.sheet_sensdata.write(j, 0, freq/1e6)
                         self.sheet_sensdata.write(j, 1, siggen_power-self.settings.cable_attenuation_dB)
-                        self.sheet_sensdata.write(j, 2, ber_percent)
+                        self.sheet_sensdata.write(j, 2, err_percent)
                         self.sheet_sensdata.write(j, 3, rssi)
                         j += 1
                         k += 1                       

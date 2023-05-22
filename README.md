@@ -186,6 +186,11 @@ The `Sensitivity.Settings` dataclass containing the settings, is documented belo
 - `measure_with_CTUNE_w_SA` (bool): Enable CTUNE with spectrum analyzer (more accurate).
 - `measure_with_CTUNE_w_SG` (bool): Enable CTUNE with signal generator (easier setup, faster).
 
+### Error rate parameters
+
+- `err_rate_type` (str): 'BER' or 'PER', for PER the `siggen_stream_type` should be a @BIT filename like "TEMP@BIT", use \"\"
+- `err_rate_threshold_percent` (float): where the sensitivity threshold is reached, different for standards
+
 ### Cable Attenuation Parameters
 
 - `cable_attenuation_dB` (float): Total cable loss in the test setup between SigGen and DUT.
@@ -203,6 +208,11 @@ The `Sensitivity.Settings` dataclass containing the settings, is documented belo
 - `siggen_filter_type` (str): "Gaussian" or "Nyquist".
 - `siggen_filter_BbT` (float): Filter BT factor between 0 and 1.
 - `siggen_custom_on` (bool): Custom mode one, for all SG functionality this should be on.
+- `siggen_per_packet_filename`: the name of the file on this PC, that contains the binary data of the test packet
+                                                Should be in the format of Saleae Logic analyzers csv export
+- `siggen_per_packet_siggen_name`(str): what the name of the @BIT file will be on the generator itself
+- `siggen_pattern_repeat` (str): continuous or single ( CONT or SING)
+- `siggen_trigger_type` (str): KEY|BUS|EXT- triggerkey on generator, GPIB bus, or external, almost always use BUS
 - `siggen_logger_settings` (Logger.Settings): Logger module settings for SG.
 
 ### Spectrum Analyzer Parameters
@@ -234,6 +244,10 @@ The `FreqOffset_Sensitivity.Settings` dataclass containing the settings, is docu
 - `freq_offset_stop_Hz` (int): Frequency offset stop value in Hz
 - `freq_offset_steps` (int): Frequency offset step values in Hz
 - `freq_offset_list_Hz` (list): Discrete frequency list option
+
+- `plot_bathtub` (bool): Plot Freq. Offset - Power - PER 3d graph, makes measurement slower, but sweeps every value, and generates html interactive plot
+
+- `bathtub_filename_html` (str): Name of aforementioned interactive plot, has to end with .html
 
 - `freq_offset_logger_settings` (Logger.Settings): Logger module settings for frequency offset measurement.
 
