@@ -3,8 +3,8 @@ from common import Logger, Level
 
 #################################################################################################################################################
 # Select the RX test options here:
-Measure_Sensitivity = False                          # Sensitivity measurement 
-Measure_Waterfall = True                           # Full waterfall measurement between defined input power levels
+Measure_Sensitivity = True                        # Sensitivity measurement 
+Measure_Waterfall = False                           # Full waterfall measurement between defined input power levels
 Measure_Blocking_w_Sensitivity = False              # Sensitivity and Blocking measurements
 Measure_Sensitivity_w_FrequencyOffset = False       # Sensitivity measurement with frequency offsets defined
 Measure_RSSI_Sweep = False                          # RSSI sweep versus input power and frequency
@@ -26,19 +26,22 @@ Frequency_List_Hz = [876e6, 902e6]                  # List of Test frequencies. 
 # Inpu power and modulation settings
 SigGen_Power_Start_dBm = -80                       # Signal Generator start power, used on the desired signal path
 SigGen_Power_Stop_dBm = -110                        # Signal Generator stop power, used on the desired signal path
-SigGen_Power_Num_Steps = 31                         # Number of power steps, used on the desired signal path
+SigGen_Power_Num_Steps = 31
+SigGen_Power_List = None                        # Number of power steps, used on the desired signal path
 Modulation_Type = 'FSK2'                            # Modulation type
 Symbol_Rate_bps = 1000e3                             # Symbol rate in bps
 Freq_Deviation_Hz = 500e3                            # Frequency deviation in Hz
+#error rates
 Error_Rate_Type = 'BER'
 Stream_Type ='PN9'  
 Error_Rate_Threshold = 0.1
 Plot_Bathtub = False
 #uncomment for PER
 # Error_Rate_Type = 'PER'
+Per_Packet_Filename = "pysiggen/packets/std_rail_packet.csv"
 # Stream_Type ='\"TEMP@BIT\"'                                 # for BER this should be 'PN9', for PER this is the packet name on the generator
-# Error_Rate_Threshold = 10
-# Plot_Bathtub = True
+# Error_Rate_Threshold = 15
+# Plot_Bathtub = False
 # Cable losses
 Desired_Path_Cable_Attenuation_dB = 7               # cable loss on the desired signal path
 Blocker_Path_Cable_Attenuation_dB = 7               # cable loss on hte blocker signal path
@@ -70,6 +73,7 @@ SA_Rbw_CTUNE = 10e3                                 # SA RBW setting during CTUN
 #################################################################################################################################################
 
 sensitivity_settings = Sensitivity.Settings(
+    
     measure_with_CTUNE_w_SA = CTUNE_Tuning_w_SA,    
     measure_with_CTUNE_w_SG = CTUNE_Tuning_w_SG,    
     freq_start_hz = Frequency_Start_Hz,
@@ -84,13 +88,16 @@ sensitivity_settings = Sensitivity.Settings(
     cable_attenuation_dB = Desired_Path_Cable_Attenuation_dB,   
     siggen_power_start_dBm = SigGen_Power_Start_dBm, 
     siggen_power_stop_dBm = SigGen_Power_Stop_dBm,   
-    siggen_power_steps = SigGen_Power_Num_Steps,        
+    siggen_power_steps = SigGen_Power_Num_Steps,
+    siggen_power_list_dBm=SigGen_Power_List,       
     siggen_modulation_type = Modulation_Type,            
     siggen_modulation_symbolrate_sps = Symbol_Rate_bps,   
     siggen_modulation_deviation_Hz = Freq_Deviation_Hz,
     err_rate_type= Error_Rate_Type,
     err_rate_threshold_percent=Error_Rate_Threshold,
     siggen_stream_type=Stream_Type,
+    siggen_per_packet_filename=Per_Packet_Filename,
+    logger_settings=Logger.Settings(module_name="rxtests.sensitivity"),
     siggen_logger_settings = Logger.Settings(logging_level=Level.DEBUG),
     specan_logger_settings = Logger.Settings(logging_level=Level.INFO),
     wstk_logger_settings = Logger.Settings(logging_level=Level.INFO)
@@ -109,7 +116,8 @@ blocking_settings = Blocking.Settings(
     cable_attenuation_dB = Desired_Path_Cable_Attenuation_dB,                   
     siggen_power_start_dBm = SigGen_Power_Start_dBm,              
     siggen_power_stop_dBm = SigGen_Power_Stop_dBm,               
-    siggen_power_steps = SigGen_Power_Num_Steps,                    
+    siggen_power_steps = SigGen_Power_Num_Steps,
+    siggen_power_list_dBm=SigGen_Power_List,                    
     siggen_modulation_type = Modulation_Type,            
     siggen_modulation_symbolrate_sps = Symbol_Rate_bps,    
     siggen_modulation_deviation_Hz = Freq_Deviation_Hz,      
@@ -126,6 +134,8 @@ blocking_settings = Blocking.Settings(
     err_rate_type= Error_Rate_Type,
     err_rate_threshold_percent=Error_Rate_Threshold,
     siggen_stream_type=Stream_Type,
+    siggen_per_packet_filename=Per_Packet_Filename,
+    logger_settings=Logger.Settings(module_name="rxtests.blocking"),
     siggen_logger_settings = Logger.Settings(logging_level=Level.INFO),
     specan_logger_settings = Logger.Settings(logging_level=Level.INFO),
     wstk_logger_settings = Logger.Settings(logging_level=Level.INFO)
@@ -146,7 +156,8 @@ FreqOffset_sensitivity_settings = FreqOffset_Sensitivity.Settings(
     cable_attenuation_dB = Desired_Path_Cable_Attenuation_dB,   
     siggen_power_start_dBm = SigGen_Power_Start_dBm, 
     siggen_power_stop_dBm = SigGen_Power_Stop_dBm,   
-    siggen_power_steps = SigGen_Power_Num_Steps,        
+    siggen_power_steps = SigGen_Power_Num_Steps,
+    siggen_power_list_dBm=SigGen_Power_List,        
     siggen_modulation_type = Modulation_Type,            
     siggen_modulation_symbolrate_sps = Symbol_Rate_bps,   
     siggen_modulation_deviation_Hz = Freq_Deviation_Hz,   
@@ -158,6 +169,8 @@ FreqOffset_sensitivity_settings = FreqOffset_Sensitivity.Settings(
     err_rate_threshold_percent=Error_Rate_Threshold,
     siggen_stream_type=Stream_Type,
     plot_bathtub=Plot_Bathtub,
+    siggen_per_packet_filename=Per_Packet_Filename,
+    logger_settings=Logger.Settings(module_name="rxtests.freqoffset"),
     freq_offset_logger_settings = Logger.Settings(logging_level=Level.INFO),
     siggen_logger_settings = Logger.Settings(logging_level=Level.DEBUG),
     specan_logger_settings = Logger.Settings(logging_level=Level.INFO),
@@ -179,14 +192,16 @@ rssi_sweep_settings = RSSI_Sweep.Settings(
     cable_attenuation_dB = Desired_Path_Cable_Attenuation_dB,   
     siggen_power_start_dBm = SigGen_Power_Start_dBm, 
     siggen_power_stop_dBm = SigGen_Power_Stop_dBm,   
-    siggen_power_steps = SigGen_Power_Num_Steps,     
+    siggen_power_steps = SigGen_Power_Num_Steps, 
+    siggen_power_list_dBm=SigGen_Power_List,   
     siggen_freq_start_Hz = Frequency_SigGen_Start_Hz, 
     siggen_freq_stop_Hz = Frequency_SigGen_Stop_Hz,
     siggen_freq_steps = Frequency_SigGen_Steps, 
     siggen_freq_list_Hz = Frequency_SigGen_List_Hz,    
     siggen_modulation_type = Modulation_Type,            
     siggen_modulation_symbolrate_sps = Symbol_Rate_bps,   
-    siggen_modulation_deviation_Hz = Freq_Deviation_Hz,      
+    siggen_modulation_deviation_Hz = Freq_Deviation_Hz,
+    logger_settings=Logger.Settings(module_name="rxtests.rssi"),     
     siggen_logger_settings = Logger.Settings(logging_level=Level.INFO),
     specan_logger_settings = Logger.Settings(logging_level=Level.INFO),
     wstk_logger_settings = Logger.Settings(logging_level=Level.INFO)

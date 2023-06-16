@@ -1,6 +1,7 @@
 from pydoc import visiblename
 
 from pywstk.pywstk_driver import WSTK_RAILTest_Driver
+from pywstk.pyRAIL import PA_Config
 from pyspecan.pySpecAn import SpecAn, RS_SpectrumAnalyzer
 import numpy as np
 from pypsu import pyPSU
@@ -89,6 +90,7 @@ class TXCWSweep():
         pwr_num_steps: int = 24
         pwr_levels: list|None = None
         pwr_format:str = 'raw'
+        pa_config:PA_Config = None
         
         #SA settings 
         specan_address: str = 'TCPIP::169.254.250.234::INSTR'
@@ -218,6 +220,8 @@ class TXCWSweep():
             self.wstk.setTxTone(on_off=False, mode="CW")
             self.wstk.setDebugMode(on_off=True)
             self.wstk.freqOverride(freq)
+            if self.settings.pa_config is not None:
+                self.wstk.setPowerConfig(self.settings.pa_config.paMode,self.settings.pa_config.milliVolts,self.settings.pa_config.rampTime_us)
             self.wstk.setTxTone(on_off=True, mode="CW")
 
             for pavdd in self.settings.pavdd_levels:
