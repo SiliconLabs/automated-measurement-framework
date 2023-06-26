@@ -1,3 +1,22 @@
+
+"""
+Automated Measurement Framework - Telec245 measurement example
+
+This script is intended as an example for the Automated Measurement Framework. Information about the example can be found in the README file
+in this folder.
+
+"""
+
+#################################################################################################################################################
+
+try:
+    import pyspecan.pySpecAn
+except ModuleNotFoundError: 
+    # This is needed for the current folder structure of the examples. Scripts placed in the main folder won't need this.
+    # This assumes that the script is 2 folders deep compared to the main folder. 
+    import sys
+    sys.path.append('../../')
+
 import pyspecan.pySpecAn
 from pywstk import pyRAIL
 from pyspecan.pySpecAn import SpecAn
@@ -5,6 +24,8 @@ from time import sleep
 from pyspecan.measurements.telec_t245_measurements import TelecT245MeasurementSuite
 from dataclasses import dataclass
 from typing import Callable
+
+#################################################################################################################################################
 
 WSTK_COM_PORT = "COM5"
 SPEC_AN_PORT = "TCPIP::169.254.88.77::INSTR"

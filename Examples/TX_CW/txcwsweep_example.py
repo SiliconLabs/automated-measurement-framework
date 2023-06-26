@@ -1,0 +1,46 @@
+
+
+"""
+Automated Measurement Framework - TX CW measurement example
+
+This script is intended as an example for the Automated Measurement Framework. Information about the example can be found in the README file
+in this folder.
+
+"""
+
+#################################################################################################################################################
+
+try:
+    from txcwsweep import TXCWSweep
+except ModuleNotFoundError:
+    # This is needed for the current folder structure of the examples. Scripts placed in the main folder won't need this.
+    # This assumes that the script is 2 folders deep compared to the main folder. 
+    import sys
+    sys.path.append('../../')
+    
+from txcwsweep import TXCWSweep
+from common import Logger, Level
+
+#################################################################################################################################################
+
+
+sweep_settings = TXCWSweep.Settings(
+    freq_list_hz = [868e6,915e6],
+    psu_present = True,
+    pavdd_levels = [3.0,3.3],
+    wstk_com_port = "COM5",
+    specan_address = 'TCPIP::169.254.250.234::INSTR',
+    psu_address = "ASRL8::INSTR",
+    specan_detector_type="APE" ,#auto peak at rohde
+    specan_logger_settings= Logger.Settings(logging_level=Level.INFO),
+    wstk_logger_settings = Logger.Settings(logging_level=Level.INFO)
+    
+)
+
+
+
+measurement = TXCWSweep(settings=sweep_settings,chip_name="EFR32FG23",board_name="BRD4204D")
+
+df = measurement.measure()
+
+print(df.to_string())

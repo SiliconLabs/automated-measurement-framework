@@ -1,7 +1,27 @@
+
+"""
+Automated Measurement Framework - RX measurements example
+
+This script is intended as an example for the Automated Measurement Framework. Information about the example can be found in the README file
+in this folder.
+
+"""
+
+#################################################################################################################################################
+
+try:
+    from rxtests import Sensitivity
+except ModuleNotFoundError: 
+    # This is needed for the current folder structure of the examples. Scripts placed in the main folder won't need this.
+    # This assumes that the script is 2 folders deep compared to the main folder. 
+    import sys
+    sys.path.append('../../')
+
 from rxtests import Sensitivity, Blocking, FreqOffset_Sensitivity, RSSI_Sweep, Waterfall
 from common import Logger, Level
 
 #################################################################################################################################################
+
 # Select the RX test options here:
 Measure_Sensitivity = True                        # Sensitivity measurement 
 Measure_Waterfall = False                           # Full waterfall measurement between defined input power levels

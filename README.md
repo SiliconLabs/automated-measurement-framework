@@ -1,7 +1,51 @@
 # Automated Measurement Framework
-## Install Script
 
-This script is designed to automate the installation process of the Automated Measurement Framework. It contains a set of variables and functions that help the user install the required dependencies.
+The goal of this project is to provide an open source solution for the automation of RF measurements, focused on measuring devices using Silicon Laboratories products. This enables customers of Silicon Laboratories to perform standardized measurements, while automating the repetitive steps in the process.
+
+### Features:
+
+- Fully automatic and repeatable measurements and tests
+- Automatic and non-intrusive installation (doesn't effect local Python)
+- Easy to start out with well documented examples
+- Highly costumizable (fully open source)
+- Easy to read and easy to process outputs (available as both Excel files and Pandas dataframes)
+
+### Getting started:
+
+First, it is recommended to read everything found on this page. After that, the *TxCWPower* or *RX* examples are a great way to start out with using the framework. For these scripts, you can also find detailed getting started guides in the appropriate folder.
+
+There are also small examples provided for each instrument driver. It is recommended to first try these, to see if the framework is able to control your instruments through the provided drivers (located in the *pyspecan*, *pysiggen*, *pywstk* and *pypsu* submodules).
+
+### Provided examples:
+
+- [TxCWPower](/Examples/TX_CW/)
+  - With optional harmonics power measurement
+- [RX](/Examples/RX/)
+  - Sensitivity (both BER and PER)
+  - Waterfall diagram
+  - RSSI sweep
+  - Sensitivity with frequency offset
+  - CTUNE calibration
+- Telec245
+  - Contains every measurement needed for a whole T254 certification for the EFR32FG25
+  - For this example to work, a special RAILTest configuration has to be appled to the DUT (you can read more about this in the folder of the example)
+- DcDcSpur
+  - DC-DC spur level measurements in TX mode
+- Instrument driver examples (located in the submodules)
+
+### Supported devices:
+
+In terms of devices that can be tested, currently only Series 1 and 2 EFR32 devices are supported (the ones that can be used with the RAILTest application). The framework was tested during development with the following instruments (but custom instruments can be added easily, as the framework uses SCPI commands to communicate with them):
+
+- 
+
+---
+
+## Installation
+
+---
+
+ The Automated Measurement Framework comes with a script that is designed to automate the installation process. It contains a set of variables and functions that help the user install the required dependencies.
 
 ### Requirements
 
@@ -39,15 +83,6 @@ The script contains the following variables:
 * `$ni_visa_web_file`: A string that specifies the location of the NI-VISA installer file on the web.
 
 ---
-
-## Logger module
-
-
-Every layer of this framework is equipped with a mostly pre-configured version of the official logging module. It is defined in the `/common/logger.py`. It can be imported from every folder, because it is installed as a package.
-
-It will log everything from every driver and measurement on the set logging level( `DEBUG` is default) to the master logfile: `app.log`. Separate log files for measurements can be created, if the `logfile_name` parameter is given at initialization. 
-
----
 ## Measurement Scripts
 ---
 
@@ -69,6 +104,16 @@ To start a measurement, call the `measure()` function. Which returns a Pandas Da
 All configurable settings for the measurements are  contained in the Settings subclass.
 
 Sweepable variables can be configured using start, stop and steps parameters or by a list. If a list is not initialized, the start/stop parameters will be used. 
+
+---
+
+## Logger module
+
+
+Every layer of this framework is equipped with a mostly pre-configured version of the official logging module. It is defined in the `/common/logger.py`. It can be imported from every folder, because it is installed as a package.
+
+It will log everything from every driver and measurement on the set logging level( `DEBUG` is default) to the master logfile: `app.log`. Separate log files for measurements can be created, if the `logfile_name` parameter is given at initialization. 
+
 
 ---
 
@@ -116,186 +161,3 @@ Most common SCPI errors, these usually rise when new instruments are added to th
 - `420, "Query UNTERMINATED"` : Not having the correct termination character can also cause this error too. Or sending an incorrect query can generate this. 
 
 Check [Tektronix's write-up]( https://www.tek.com/en/documents/application-note/eliminating-common-scpi-errors) for a more verbose guide.
-
----
-## TX CW Sweep
-
-Sweeps and measures basic TX parameters, like harmonic power and consumption, in CW mode.
-
-
-
-The `TXCWSweep.Settings` dataclass containing the settings, is documented below:
-
-### Frequency Parameters
-
-- `freq_start_hz` (int): Start frequency
-- `freq_stop_hz` (int): Stop frequency
-- `freq_num_steps` (int): Number of discrete frequency steps between stop and start values
-- `freq_list_hz` (list): Custom list of frequencies
-- `harm_order_up_to` (int): Number of harmonics to measure, fundamental included
-
-### Power Supply Parameters
-
-- `psu_present` (bool): Power supply presence variable, default False, meaning internal 3.3V is used
-- `psu_address` (str): VISA address of PSU, if serial is used, it is a COM port, check PyVISA documentation
-- `pavdd_min` (float): Minimum supply voltage
-- `pavdd_max` (float): Maximum supply voltage
-- `pavdd_num_steps` (int): Number of discrete voltage steps between stop and start values
-- `pavdd_levels` (list): Custom list of voltages
-
-### Amplifier Parameters
-
-- `min_pwr_state` (int): Maximum power setting for EFR internal amplifier
-- `max_pwr_state` (int): Minimum power setting for EFR internal amplifier
-- `pwr_num_steps` (int): Number of amplifier power values between stop and start values
-- `pwr_levels` (list): Custom list of power values
-
-### Spectrum Analyzer Parameters
-
-- `specan_address` (str): VISA address of Spectrum Analyzer, can check PyVISA documentation
-- `specan_span_hz` (int): SA span in Hz
-- `specan_rbw_hz` (int): SA resolution bandwidth in Hz
-- `specan_ref_level_dbm` (int): SA reference level in dBm
-- `specan_detector_type` (str): SA detector type, directly passed to pySpecAn
-- `specan_ref_offset` (float): SA reference offset
-
-### RAILTest Device Parameters
-
-- `wstk_com_port` (str): COM port of the RAILTest device
-
-
----
-## RX sensitivity
-Measuring receiver sensitivity of the EFR32-based design.
-
-Required instruments: 
-- SiLabs EFR with RAILTest configured
-- Signal Generator, currently tested with HP E4432B generator.
-- (optional) If CTUNE is done with Spectrum analyzer, then it is needed
-
-The `Sensitivity.Settings` dataclass containing the settings, is documented below:
-### Frequency Parameters
-
-- `freq_start_hz` (int): Start frequency in Hz.
-- `freq_stop_hz` (int): Stop frequency in Hz.
-- `freq_num_steps` (int): Number of discrete frequency steps between stop and start values.
-- `freq_list_hz` (list): Custom list of frequencies.
-
-### CTUNE Parameters
-
-- `measure_with_CTUNE_w_SA` (bool): Enable CTUNE with spectrum analyzer (more accurate).
-- `measure_with_CTUNE_w_SG` (bool): Enable CTUNE with signal generator (easier setup, faster).
-
-### Error rate parameters
-
-- `err_rate_type` (str): 'BER' or 'PER', for PER the `siggen_stream_type` should be a @BIT filename like "TEMP@BIT", use \"\"
-- `err_rate_threshold_percent` (float): where the sensitivity threshold is reached, different for standards
-
-### Cable Attenuation Parameters
-
-- `cable_attenuation_dB` (float): Total cable loss in the test setup between SigGen and DUT.
-
-### Signal Generator Parameters
-
-- `siggen_power_start_dBm` (float): Start SigGen power in dBm, cable loss not included.
-- `siggen_power_stop_dBm` (float): Stop SigGen power in dBm, cable loss not included.
-- `siggen_power_steps` (int): Number of discrete SigGen power steps between stop and start values.
-- `siggen_power_list_dBm` (list): Custom list of SigGen powers in dBm.
-- `siggen_modulation_type` (str): Modulation type, most common values: BPSK|QPSK|OQPSK|MSK|FSK2|FSK4|FSK8. See all modulation abbrevations at page 299 of [Keysight programming guide](https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf).
-- `siggen_modulation_symbolrate_sps` (float): Symbol rate of the output signal in symbols per second, minimum :47.684 sps, max: 12.500000 Msps.
-- `siggen_modulation_deviation_Hz` (float): Frequency deviation in hertz for FM types.
-- `siggen_stream_type` (str): Data type of the output stream, values: PN9|PN11|PN15|PN20|PN23|FIX4|"<file name>"|EXT|P4|P8|P16|P32|P64. See all documentation for stream modes by searching for "RADio:CUSTom:DATA" in [Keysight programming guide](https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf).
-- `siggen_filter_type` (str): "Gaussian" or "Nyquist".
-- `siggen_filter_BbT` (float): Filter BT factor between 0 and 1.
-- `siggen_custom_on` (bool): Custom mode one, for all SG functionality this should be on.
-- `siggen_per_packet_filename`: the name of the file on this PC, that contains the binary data of the test packet
-                                                Should be in the format of Saleae Logic analyzers csv export
-- `siggen_per_packet_siggen_name`(str): what the name of the @BIT file will be on the generator itself
-- `siggen_pattern_repeat` (str): continuous or single ( CONT or SING)
-- `siggen_trigger_type` (str): KEY|BUS|EXT- triggerkey on generator, GPIB bus, or external, almost always use BUS
-- `siggen_logger_settings` (Logger.Settings): Logger module settings for SG.
-
-### Spectrum Analyzer Parameters
-
-- `specan_address` (str): VISA address of Spectrum Analyzer, can check PyVISA documentation
-- `specan_span_hz` (int): SA span in Hz
-- `specan_rbw_hz` (int): SA resolution bandwidth in Hz
-- `specan_ref_level_dbm` (int): SA reference level in dBm
-- `specan_detector_type` (str): SA detector type, directly passed to pySpecAn
-- `specan_ref_offset` (float): SA reference offset
-- `specan_logger_settings` (Logger.Settings): Logger module settings for SA.
-
-### RAILTest Device Settings
-
-- `wstk_com_port`: COM port of the RAILTest device.
-- `wstk_logger_settings` (Logger.Settings): Logger module settings for WSTK.
-
----
-
-## Frequency Offset Sensitivity
-Measuring receiver sensitivity to frequency offset of the EFR32-based design.
-
-Subclass of `Sensitivity`, so all the parameters from before are inherited.
-
-The `FreqOffset_Sensitivity.Settings` dataclass containing the settings, is documented below:
-
-### Frequency Offset Sweep Parameters
-- `freq_offset_start_Hz` (int): Frequency offset stop value in Hz
-- `freq_offset_stop_Hz` (int): Frequency offset stop value in Hz
-- `freq_offset_steps` (int): Frequency offset step values in Hz
-- `freq_offset_list_Hz` (list): Discrete frequency list option
-
-- `plot_bathtub` (bool): Plot Freq. Offset - Power - PER 3d graph, makes measurement slower, but sweeps every value, and generates html interactive plot
-
-- `bathtub_filename_html` (str): Name of aforementioned interactive plot, has to end with .html
-
-- `freq_offset_logger_settings` (Logger.Settings): Logger module settings for frequency offset measurement.
-
----
-
-## Blocking
-Measuring receiver blocking on different frequencies of the EFR32-based design.
-
-Subclass of `Sensitivity`, so all the parameters from it are inherited.
-
-The `FreqOffset_Sensitivity.Settings` dataclass containing the settings, is documented below:
-
-### Blocker Frequency Parameters
-- `blocker_offset_start_freq_Hz` (int): Blocker frequency offset start value in Hz
-- `blocker_offset_stop_freq_Hz` (int): Blocker frequency offset stop value in Hz
-- `blocker_offset_freq_steps` (int): Blocker frequency offset step values
-- `blocker_offset_freq_list_Hz` (list): Blocker frequency discrete list option
-### Blocker Power Parameters
-- `blocker_cable_attenuation_dB` (float):  Attenuation from the blocker generator to the DUT, in dB
-
-- `blocker_start_power_dBm` (float): Blocker start power value in dBm, without the cable attenuation
-- `blocker_stop_power_dBm` (float): Blocker stop power value in dBm, without the cable attenuation
-- `blocker_power_steps` (int): Blocker power value steps 
-- `blocker_power_list_dBm` (list): Blocker power discrete list option
-
-- `blocker_logger_settings` (`Logger.Settings`): Logger module settings for blocking measurement
-
----
-
-## RSSI Sweep
-Measuring receiver RSSI metering accuracy on different frequencies of the EFR32-based design.
-
-Subclass of `Sensitivity`, so all the parameters from it are inherited.
-
-The `RSSI_Sweep.Settings` dataclass containing the settings, is documented below:
-### Signal Generator Parameters
-
-- `siggen_freq_start_Hz` (int): SG frequency start value in Hz
-- `siggen_freq_stop_Hz` (int): SG frequency stop value in Hz
-- `siggen_freq_steps` (int): SG frequency step values
-- `siggen_freq_steps` (list): Blocker frequency discrete list option
-
----
-## Waterfall
-Measures receiver sensitivity, just with a continuous power sweep and plotting capabilities
-
-Settings completely inherited from `Sensitivity`.
-
----
-        
-

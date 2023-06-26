@@ -1,5 +1,24 @@
-from pydoc import visiblename
+
+"""
+Automated Measurement Framework - DC-DC spur measurement example
+
+This script is intended as an example for the Automated Measurement Framework. Information about the example can be found in the README file
+in this folder.
+
+"""
+
+#################################################################################################################################################
+
+try:
+    from pywstk.pyRAIL import WSTK_RAILTest
+except ModuleNotFoundError:
+    # This is needed for the current folder structure of the examples. Scripts placed in the main folder won't need this.
+    # This assumes that the script is 2 folders deep compared to the main folder. 
+    import sys
+    sys.path.append('../../')
+
 from pywstk.pyRAIL import WSTK_RAILTest
+from pydoc import visiblename
 from pyspecan.pySpecAn import SpecAn, Anritsu_SignalAnalyzer
 from pyspecan.measurements.generic_measurements import SpectrumSweep, MeasurementSuite
 import numpy as np
@@ -16,6 +35,8 @@ import atexit
 from pyvisa import errors as visaerrors
 import itertools
 import warnings
+
+#################################################################################################################################################
 
 class TxDcDcSpurTest:
     """
