@@ -69,7 +69,7 @@ class Sensitivity():
         :param str siggen_stream_type: data type of the output stream,
                                        values: PN9|PN11|PN15|PN20|PN23|FIX4|"<file name>"|EXT|P4|P8|P16|P32|P64
                                         see all documentation for stream modes by searching for "RADio:CUSTom:DATA" in https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf
-        :param str siggen_filter_type: "Gaussian" or "Nyquist" 
+        :param str siggen_filter_type: check manual for generators, GAUS is for gaussian
         :param float siggen_filter_BbT: Filter BT factor between 0 and 1
         :param bool siggen_custom_on: Custom mode one, for all SG functionality this should be on
         :param str siggen_per_packet_filename: the name of the file on this PC, that contains the binary data of the test packet
@@ -118,10 +118,11 @@ class Sensitivity():
         siggen_modulation_type: str = "FSK2" #see all modulation abbrevations at page 299 of https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf
         siggen_modulation_symbolrate_sps: float = 100e3
         siggen_modulation_deviation_Hz: float = 50e3
+        siggen_modulation_bits_per_symbol:int = 1
         #siggen_rf_on = True
         #siggen_mod_on = True
         siggen_stream_type:str = "PN9" #see all available stream modes by searching for "RADio:CUSTom:DATA" in https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf
-        siggen_filter_type:str = "Gaussian" #Gaussian or Nyquist
+        siggen_filter_type:str = "GAUS" #check generators manual, GAUS is for gaussian
         siggen_filter_BbT:float = 0.5
         siggen_custom_on:bool = True
         siggen_per_packet_filename :str = "pysiggen/packets/std_rail_packet.csv"
@@ -173,17 +174,24 @@ class Sensitivity():
 
     def initialize_siggen(self):
         self.siggen = SigGen(resource=self.settings.siggen_address,logger_settings=self.settings.siggen_logger_settings)
-        self.siggen.setAmplitude(self.settings.siggen_power_start_dBm)
-        self.siggen.setModulation_type(self.settings.siggen_modulation_type)
-        self.siggen.setSymbolrate(self.settings.siggen_modulation_symbolrate_sps)
-        self.siggen.setDeviation(self.settings.siggen_modulation_deviation_Hz)
-        self.siggen.setFilter(self.settings.siggen_filter_type)
-        self.siggen.setFilterBbT(self.settings.siggen_filter_BbT)
-        self.siggen.setBinaryData(self.settings.siggen_per_packet_filename,self.settings.siggen_per_packet_siggen_name)
-        self.siggen.setPatternRepeat(self.settings.siggen_pattern_repeat)
-        self.siggen.setTriggerType(self.settings.siggen_trigger_type)
-        self.siggen.setStreamType(self.settings.siggen_stream_type)
-        self.siggen.toggleCustom(self.settings.siggen_custom_on)
+        self.siggen_settings = SigGenSettings()
+        self.siggen.reset()
+
+        self.siggen_settings.amplitude_dbm = self.settings.siggen_power_start_dBm
+        self.siggen_settings.modulation.type = self.settings.siggen_modulation_type
+        self.siggen_settings.modulation.symbolrate_sps = self.settings.siggen_modulation_symbolrate_sps
+        self.siggen_settings.modulation.deviation_Hz = self.settings.siggen_modulation_deviation_Hz
+        self.siggen_settings.filter_type = self.settings.siggen_filter_type
+        self.siggen_settings.filter_BbT = self.settings.siggen_filter_BbT
+        self.siggen_settings.trigger_type = self.settings.siggen_trigger_type
+        self.siggen_settings.pattern_repeat = self.settings.siggen_pattern_repeat
+        self.siggen_settings.stream_type = self.settings.siggen_stream_type
+        self.siggen_settings.custom_on = self.settings.siggen_custom_on
+        self.siggen_settings.per_packet_filename = self.settings.siggen_per_packet_filename
+        self.siggen_settings.per_packet_siggen_name = self.settings.siggen_per_packet_siggen_name
+
+        
+        self.siggen.setStream(self.siggen_settings)
         self.siggen.toggleModulation(False)
         self.siggen.toggleRFOut(False)
         if self.settings.siggen_power_list_dBm is None:
