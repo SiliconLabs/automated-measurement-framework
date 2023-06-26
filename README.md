@@ -20,7 +20,7 @@ There are also small examples provided for each instrument driver. It is recomme
 
 - [TxCWPower](/Examples/TX_CW/)
   - With optional harmonics power measurement
-- [RX](/Examples/RX/)
+- [RX](/Examples/RX/README.md)
   - Sensitivity (both BER and PER)
   - Waterfall diagram
   - RSSI sweep
