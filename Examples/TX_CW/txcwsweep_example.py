@@ -6,6 +6,8 @@ Automated Measurement Framework - TX CW measurement example
 This script is intended as an example for the Automated Measurement Framework. Information about the example can be found in the README file
 in this folder.
 
+Tested with:
+
 """
 
 #################################################################################################################################################
@@ -30,14 +32,12 @@ sweep_settings = TXCWSweep.Settings(
     pavdd_levels = [3.0,3.3],
     wstk_com_port = "COM5",
     specan_address = 'TCPIP::169.254.250.234::INSTR',
-    psu_address = "ASRL8::INSTR",
-    specan_detector_type="APE" ,#auto peak at rohde
+    psu_address = "ASRL8::INSTR", 
+    specan_detector_type = "APE" , # Auto peak for Rohde&Schwarz instruments
+    # specan.setDetector("NORM"), # Anritsu: Simultaneous detection for positive and negative peaks
     specan_logger_settings= Logger.Settings(logging_level=Level.INFO),
     wstk_logger_settings = Logger.Settings(logging_level=Level.INFO)
-    
 )
-
-
 
 measurement = TXCWSweep(settings=sweep_settings,chip_name="EFR32FG23",board_name="BRD4204D")
 

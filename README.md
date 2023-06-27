@@ -16,11 +16,13 @@ First, it is recommended to read everything found on this page. After that, the 
 
 There are also small examples provided for each instrument driver. It is recommended to first try these, to see if the framework is able to control your instruments through the provided drivers (located in the *pyspecan*, *pysiggen*, *pywstk* and *pypsu* submodules).
 
+The documentation for the classes can be found in the README files for the examples and in the code itself as comments.
+
 ### Provided examples:
 
-- [TxCWPower](/Examples/TX_CW/)
+- TX CW Power Sweep
   - With optional harmonics power measurement
-- [RX](/Examples/RX/README.md)
+- RX
   - Sensitivity (both BER and PER)
   - Waterfall diagram
   - RSSI sweep
@@ -31,7 +33,7 @@ There are also small examples provided for each instrument driver. It is recomme
   - For this example to work, a special RAILTest configuration has to be appled to the DUT (you can read more about this in the folder of the example)
 - DcDcSpur
   - DC-DC spur level measurements in TX mode
-- Instrument driver examples (located in the submodules)
+- Instrument driver examples
 
 ### Supported devices:
 
@@ -46,12 +48,6 @@ In terms of devices that can be tested, currently only Series 1 and 2 EFR32 devi
 ---
 
  The Automated Measurement Framework comes with a script that is designed to automate the installation process. It contains a set of variables and functions that help the user install the required dependencies.
-
-### Requirements
-
-- PowerShell(already found on most Windows systems)
-- Installed [Git Bash for Windows](https://github.com/git-for-windows/git/releases/download/v2.40.0.windows.1/Git-2.40.0-64-bit.exe)
-- SSH key [Added to Stash Profile](https://confluence.atlassian.com/display/STASH025/Adding+an+SSH+key+to+your+Stash+account+on+Windows)
 
 ### Execution
 
