@@ -3,7 +3,10 @@
 Automated Measurement Framework - DC-DC spur measurement example
 
 This script is intended as an example for the Automated Measurement Framework. Information about the example can be found in the README file
-in this folder.
+in this folder. 
+
+Tested with:
+    - Anritsu MS2692A
 
 """
 
@@ -271,15 +274,15 @@ class TxDcDcSpurTest:
 
 if __name__ == '__main__':
     test_settings = TxDcDcSpurTest.Settings(
-        freq_list_hz=[426662500, ],
+        freq_list_hz=[868e6, ],
 
-        dut_com_port="COM18",
+        dut_com_port="COM4",
         dut_logger_settings=Logger.Settings(logging_level=Level.INFO),
 
         power_level_list=[10, 120, 240, ],  # np.linspace(0,240,241,dtype=float),
         power_format= "RAW",
 
-        psu_address="ASRL19::INSTR",
+        psu_address="ASRL8::INSTR",
         psu_voltage_list_v=[2.5, ],
         psu_logger_settings=Logger.Settings(logging_level=Level.INFO),
 
@@ -291,6 +294,9 @@ if __name__ == '__main__':
 
         dcdc_spur_search_peak_excursion_db=10
     )
+
+    CHIP_NAME = "EFR32FG23"
+    BOARD_NAME = "BRD4210A"
 
     measurement = TxDcDcSpurTest(settings=test_settings, chip_name="EFR32FG23", board_name="BRD4265B")
 

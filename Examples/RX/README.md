@@ -23,7 +23,7 @@ Follow these steps to start measuring CW TX power with the Automated Measurement
 2. Activate the virtual environment by running the `activate_environment` script from PowerShell
 3. Configure the DUT with a Railtest application. 
    - It is important to configure the DUT with the actual PHY parameters that the measurement will use. If you need to test more PHYs in an automated way, you can add multiple radio configs to the RAILTest that you are using, and you can switch between them using the `setconfigindex(config_index)` command found in the `WSTK_RAILTest_driver` class. 
-   - If you are planning to do BER measurements, make sure to select the "*reconfigure for BER*" option in the radio configuraor
+   - If you are planning to do BER measurements, make sure to select the "*reconfigure for BER*" option in the radio configurator. Otherwise, make sure that this is disabled
    - For blocking testing, an RF power combiner needs to be used
 4. Put together the physical measurement setup. 
    - For sensitivity measurements in general, a shielded box is recommended.
@@ -35,7 +35,7 @@ Follow these steps to start measuring CW TX power with the Automated Measurement
       - If in doubt, you can run `pyvisa-shell` in the command line and then type `list`. This brings up a list with all the instrument addresses that VISA recognizes.
    4. Set the cable attenuation of the signal path (for blocking tests, this needs to be set separately for the blocker path). The script uses this to correct the actual measured values.
    4. Configure the parameters ...
-6. Run the *rxtests_example.py* Python script from the virtual environment. The output will be an excel file with all the measured raw data and output graphs.
+6. Run the *rxtests_example.py* Python script from the virtual environment usin `py rxtests_example.py` in the correct folder. The output will be an excel file with all the measured raw data and output graphs.
 
 
 ### How to make PER measurements

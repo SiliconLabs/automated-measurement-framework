@@ -29,7 +29,7 @@ Follow these steps to start measuring CW TX power with the Automated Measurement
       - Spectrum analyzer parameters (span, RBW): this is important to think through for higher frequency harmonics!
       - You can find a detailed list of all the available parameters below.
       - If no power supply is used, make sure to set `psu_present` to `False`
-6. Run the *txcwsweep_example.py* Python script from the virtual environment. The output will be an excel file with all the measured raw data and output graphs.
+6. Run the *txcwsweep_example.py* Python script from the virtual environment using `py txcwspweep_example.py` in the correct folder. The output will be an excel file with all the measured raw data and output graphs.
 
 
 ---

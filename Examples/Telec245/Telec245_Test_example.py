@@ -3,7 +3,10 @@
 Automated Measurement Framework - Telec245 measurement example
 
 This script is intended as an example for the Automated Measurement Framework. Information about the example can be found in the README file
-in this folder.
+in this folder. 
+
+Tested with: 
+    - Anritsu MS2692A
 
 """
 
@@ -26,10 +29,11 @@ from time import sleep
 from pyspecan.measurements.telec_t245_measurements import TelecT245MeasurementSuite
 from dataclasses import dataclass
 from typing import Callable
+from common import Logger, Level
 
 #################################################################################################################################################
 
-WSTK_COM_PORT = "COM5"
+WSTK_COM_PORT = "COM4"
 SPEC_AN_PORT = "TCPIP::169.254.88.77::INSTR"
 CTUNE_OVERRIDE = 87
 
@@ -181,8 +185,11 @@ config_list = [
 
 
 def run_test(configs):
-    dut = pyRAIL.WSTK_RAILTest(COMport=WSTK_COM_PORT, reset=True)
-    sa = SpecAn(resource=SPEC_AN_PORT, auto_detect=True)
+    dut_logger_settings = Logger.Settings(logging_level=Level.INFO)
+    dut = pyRAIL.WSTK_RAILTest(COMport=WSTK_COM_PORT, reset=True, logger_settings=dut_logger_settings)
+
+    specan_logger_settings= Logger.Settings(logging_level=Level.INFO)
+    sa = SpecAn(resource=SPEC_AN_PORT, auto_detect=True, logger_settings=specan_logger_settings)
 
     if CTUNE_OVERRIDE is not None:
         dut._driver.setCtune(CTUNE_OVERRIDE)

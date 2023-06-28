@@ -9,19 +9,19 @@ the radio configurator.
 
 #################################################################################################################################################
 
+# This is needed for the current folder structure of the examples. Scripts placed in the main folder won't need this.
 try:
     from pywstk import pyRAIL
 except ModuleNotFoundError:
-    # This is needed for the current folder structure of the examples. Scripts placed in the main folder won't need this.
     # This assumes that the script is 2 folders deep compared to the main folder. 
     import sys
     sys.path.append('../../')
-    from pywstk import pyRAIL
-
-import time
-from common import Logger, Level
 
 #################################################################################################################################################
+    
+from pywstk import pyRAIL
+import time
+from common import Logger, Level
 
 if __name__ == "__main__":
 

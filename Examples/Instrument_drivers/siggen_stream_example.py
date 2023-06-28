@@ -4,23 +4,24 @@ Automated Measurement Framework - Signal generator driver example (stream mode)
 This example demonstrates the use of the pySiggen driver through sending out a stream of bits using a set modulation.
 
 Tested with:
+    - HP E4432B
 
 """
 
 #################################################################################################################################################
 
+# This is needed for the current folder structure of the examples. Scripts placed in the main folder won't need this.
 try:
     from pysiggen import pySigGen
 except ModuleNotFoundError:
-    # This is needed for the current folder structure of the examples. Scripts placed in the main folder won't need this.
     # This assumes that the script is 2 folders deep compared to the main folder. 
     import sys
     sys.path.append('../../')
 
+#################################################################################################################################################
+
 from pysiggen import pySigGen
 from time import sleep
-
-#################################################################################################################################################
 
 '''
 
@@ -31,7 +32,7 @@ R&S SMBV100A manual:
 https://scdn.rohde-schwarz.com/ur/pws/dl_downloads/dl_common_library/dl_manuals/gb_1/s/smu200a_1/SMU200A_OperatingManual_en_19.pdf
 
 '''
-siggen = pySigGen.SigGen("GPIB2::28::INSTR") #this can change, run pyvisa-shell list command in cmd to find current address
+siggen = pySigGen.SigGen("GPIB1::5::INSTR") #this can change, run pyvisa-shell list command in cmd to find current address
 
 siggen.getError()
 settings = pySigGen.SigGenSettings()

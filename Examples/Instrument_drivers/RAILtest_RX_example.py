@@ -4,26 +4,28 @@ Automated Measurement Framework - RAILTest driver example (TX mode)
 This examples demonstrates RX functionality using the pyRAIL driver. It sets the connected WSTK and radio board to RX mode then prints to the
 console whenever it receives anything. 
 
+For receiving packages, please make sure that the "reconfigure for BER" option is not checked in the radio configurator.
+
 """
 
 #################################################################################################################################################
 
+# This is needed for the current folder structure of the examples. Scripts placed in the main folder won't need this.
 try:
     from pywstk import pyRAIL
 except ModuleNotFoundError:
-    # This is needed for the current folder structure of the examples. Scripts placed in the main folder won't need this.
     # This assumes that the script is 2 folders deep compared to the main folder. 
     import sys
     sys.path.append('../../')
-    from pywstk import pyRAIL
-
-import time
-from multiprocessing import Queue
 
 #################################################################################################################################################
 
+from pywstk import pyRAIL
+import time
+from multiprocessing import Queue
+
 if __name__ == "__main__":
-    wstk = pyRAIL.WSTK_RAILTest("COM4") # Select the COM port of the WSTK
+    wstk = pyRAIL.WSTK_RAILTest("COM7") # Select the COM port of the WSTK
 
     while 1:
         try:

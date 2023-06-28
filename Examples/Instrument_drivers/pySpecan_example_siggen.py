@@ -5,27 +5,28 @@ This example demonstrates the use of the signal generator features of the pySpec
 the same device. To test this example, please connect the output of the analyzer to the input.
 
 Tested with:
+    - Anritsu MS2692A
 
 """
 
 #################################################################################################################################################
 
+# This is needed for the current folder structure of the examples. Scripts placed in the main folder won't need this.
 try:
     from pyspecan import pySpecAn
 except ModuleNotFoundError:
-    # This is needed for the current folder structure of the examples. Scripts placed in the main folder won't need this.
     # This assumes that the script is 2 folders deep compared to the main folder. 
     import sys
     sys.path.append('../../')
+
+#################################################################################################################################################
 
 from pyspecan import pySpecAn
 from common import Logger, Level
 from time import sleep
 
-#################################################################################################################################################
-
 # Set the spectrum analyzer address
-specan = pySpecAn.SpecAn("TCPIP::169.254.88.77::INSTR", auto_detect=True,logger_settings=Logger.Settings(logging_level=Level.INFO))
+specan = pySpecAn.SpecAn("TCPIP::169.254.88.77::INSTR", logger_settings=Logger.Settings(logging_level=Level.INFO))
 
 freq = 470e6
 pwr = -20
@@ -56,12 +57,16 @@ print("\nMeasured SA results:")
 print(marker)
 sleep(1)
 
+# Phase noise measurement mode
 specan.setAppSwitch("PN")
 specan.setFrequency(freq)
 specan.setRBW(1000.0)
 specan.setRefLevel(pwr+10)
 sleep(3)
 
+# Go back to signal generator to turn off the output
 specan.setAppSwitch("SG")
 specan.setSigGenOutput_toggle(on_off=False)
 print(specan.getSigGenOutput_toggle()) # Turn off generator output
+
+specan.setAppSwitch("SA")

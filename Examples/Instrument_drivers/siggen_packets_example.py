@@ -5,23 +5,24 @@ This example demonstrates the use of the pySiggen driver through sending out pre
 The file path for the packet data should always be set before running.
 
 Tested with:
+    - HP E4432B
 
 """
 
 #################################################################################################################################################
 
+# This is needed for the current folder structure of the examples. Scripts placed in the main folder won't need this.
 try:
     from pysiggen import pySigGen
 except ModuleNotFoundError:
-    # This is needed for the current folder structure of the examples. Scripts placed in the main folder won't need this.
     # This assumes that the script is 2 folders deep compared to the main folder. 
     import sys
     sys.path.append('../../')
 
+#################################################################################################################################################
+
 from pysiggen import pySigGen
 from time import sleep
-
-#################################################################################################################################################
 
 '''
 
@@ -33,7 +34,7 @@ https://scdn.rohde-schwarz.com/ur/pws/dl_downloads/dl_common_library/dl_manuals/
 
 '''
 
-siggen = pySigGen.SigGen("GPIB2::28::INSTR") # This can change, run pyvisa-shell list command in cmd to find current address
+siggen = pySigGen.SigGen("GPIB1::5::INSTR") # This can change, run pyvisa-shell list command in cmd to find current address
 
 siggen.getError()
 settings = pySigGen.SigGenSettings()
@@ -51,13 +52,18 @@ settings.pattern_repeat = "SINGle"                                  # On trigger
 settings.filter_type = "GAUS"                                       # Check manual for generators, GAUS is for gaussian
 settings.filter_BbT = 0.5                                           # BT parameter of the filter in the transmitter
 settings.custom_on = True                                           # This should always be 'True'
-settings.per_packet_filename = "packets/std_rail_packet.csv"        # File path for the packet data
+settings.per_packet_filename = "std_rail_packet.csv"        # File path for the packet data
 settings.per_packet_siggen_name = "TEMP"
 #################
 
 siggen.reset()
 siggen.setStream(settings)
+# Send 100 triggers for packet transmission
+# Make sure that the delay is bigger by some margin than the packet TX time
 siggen.sendTrigger(100,delay=0.01)
 siggen.getError()
+
+siggen.toggleModulation(False)
+siggen.toggleRFOut(False)
 
 

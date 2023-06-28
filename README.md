@@ -29,7 +29,7 @@ The documentation for the classes can be found in the README files for the examp
   - Sensitivity with frequency offset
   - CTUNE calibration
 - Telec245
-  - Contains every measurement needed for a whole T254 certification for the EFR32FG25
+  - Contains every measurement needed for a whole T254 certification
   - For this example to work, a special RAILTest configuration has to be appled to the DUT (you can read more about this in the folder of the example)
 - DcDcSpur
   - DC-DC spur level measurements in TX mode
@@ -37,7 +37,7 @@ The documentation for the classes can be found in the README files for the examp
 
 ### Supported devices:
 
-In terms of devices that can be tested, currently only Series 1 and 2 EFR32 devices are supported (the ones that can be used with the RAILTest application). The framework was tested during development with the following instruments (but custom instruments can be added easily, as the framework uses SCPI commands to communicate with them):
+In terms of devices that can be tested, currently only Series 1 and 2 EFR32 devices are supported (the ones that can be used with the RAILTest application). The framework was tested during development with the following instruments (but other instruments from the same manufacturer are likely compatible, and also custom instruments can be added easily, as the framework uses SCPI commands to communicate with them):
 
 - 
 

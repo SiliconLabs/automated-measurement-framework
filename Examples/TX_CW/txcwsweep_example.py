@@ -3,10 +3,12 @@
 """
 Automated Measurement Framework - TX CW measurement example
 
-This script is intended as an example for the Automated Measurement Framework. Information about the example can be found in the README file
+This script is intended as an example for the Automated Measurement Framework. Information about the example and the TXCWSweep class can be found in the README file
 in this folder.
 
 Tested with:
+    - Keysight E3646A PSU
+    - Anritsu MS2692A spectrum analyzer
 
 """
 
@@ -30,8 +32,11 @@ sweep_settings = TXCWSweep.Settings(
     freq_list_hz = [868e6,915e6],
     psu_present = True,
     pavdd_levels = [3.0,3.3],
-    wstk_com_port = "COM5",
-    specan_address = 'TCPIP::169.254.250.234::INSTR',
+    wstk_com_port = "COM4",
+    specan_address = 'TCPIP::169.254.88.77::INSTR',
+    specan_span_hz = 1e6,
+    specan_rbw_hz = 100e3,
+    specan_ref_level_dbm = 20,
     psu_address = "ASRL8::INSTR", 
     specan_detector_type = "APE" , # Auto peak for Rohde&Schwarz instruments
     # specan.setDetector("NORM"), # Anritsu: Simultaneous detection for positive and negative peaks
