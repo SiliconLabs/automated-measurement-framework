@@ -5,6 +5,7 @@ local_python_env/
 app.log
 *.xlsx
 *.csv
+!std_rail_packet.csv
 *.egg-info
 build/
 *.html
