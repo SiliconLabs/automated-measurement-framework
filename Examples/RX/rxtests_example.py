@@ -64,12 +64,14 @@ Error_Rate_Threshold = 0.1
 Plot_Bathtub = False
 Pattern_Repeat = 'CONT'
 Per_Packet_Filename = "std_rail_packet.csv"
+
 #uncomment for PER
 # Error_Rate_Type = 'PER'
 # Stream_Type ='\"TEMP@BIT\"'                                 # for BER this should be 'PN9', for PER this is the packet name on the generator
 # Error_Rate_Threshold = 15
 # Pattern_Repeat = 'SING'
 # Plot_Bathtub = False
+
 ## Cable losses
 Desired_Path_Cable_Attenuation_dB = 0               # cable loss on the desired signal path
 Blocker_Path_Cable_Attenuation_dB = 0               # cable loss on hte blocker signal path
