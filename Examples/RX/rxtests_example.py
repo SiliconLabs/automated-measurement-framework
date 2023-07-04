@@ -42,6 +42,7 @@ Board_Name = 'BRD4210B'                             # Board name of DUT
 WSTK_COM_Port = 'COM4'                              # WSTK board COM port
 SigGen_Address = 'GPIB1::5::INSTR'                  # Signal Generator address
 SpecAn_Address = 'TCPIP::169.254.88.77::INSTR'      # Spectrum Analyzer address
+Blocking_Siggen_Address = 'TCPIP::169.254.88.77::INSTR' # Address of the generator used to generate blocking signal
 # Desired Signal Test Frequencies
 Frequency_Start_Hz = 868e6                          # Test frequency start
 Frequency_Stop_Hz = 928e6                           # Test frequency stop
@@ -142,6 +143,7 @@ blocking_settings = Blocking.Settings(
     wstk_com_port = WSTK_COM_Port,
     siggen_address = SigGen_Address,             
     specan_address = SpecAn_Address, 
+    blocking_address= Blocking_Siggen_Address,
     cable_attenuation_dB = Desired_Path_Cable_Attenuation_dB,                   
     siggen_power_start_dBm = SigGen_Power_Start_dBm,              
     siggen_power_stop_dBm = SigGen_Power_Stop_dBm,               

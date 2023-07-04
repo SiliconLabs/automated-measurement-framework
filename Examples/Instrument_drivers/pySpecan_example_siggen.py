@@ -3,6 +3,7 @@ Automated Measurement Framework - Spectrum analyzer driver example (signal gener
 
 This example demonstrates the use of the signal generator features of the pySpecAn driver by transmitting a signal and then measuring it with
 the same device. To test this example, please connect the output of the analyzer to the input.
+The Anritsu spectrum analyzer is also implemented as a signal generator in the pySigGen module (but only for CW signals).
 
 Tested with:
     - Anritsu MS2692A

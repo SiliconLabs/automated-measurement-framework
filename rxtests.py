@@ -141,6 +141,10 @@ class Sensitivity():
         specan_ref_offset: float = 0
         specan_logger_settings: Logger.Settings = Logger.Settings()
 
+        #Blocking siggen settings
+        blocking_address: str = 'TCPIP::169.254.88.77::INSTR'
+        blocking_logger_settings: Logger.Settings = Logger.Settings()
+
         #WSTK settings
         wstk_com_port: str = ""
         wstk_logger_settings: Logger.Settings = Logger.Settings()
@@ -754,16 +758,34 @@ class Blocking(Sensitivity):
             self.settings.logger_settings.module_name = __name__
 
         self.logger = Logger(self.settings.logger_settings)
-        atexit.register(self.__del__)
+        atexit.register(self.__del__)                                           
+            
+    # Based on initialize_siggen
+    def initialize_blocking_generator(self):
+        self.blocking_siggen = SigGen(resource=self.settings.blocking_address,logger_settings=self.settings.blocking_logger_settings)
+        self.blocking_siggen_settings = SigGenSettings()
+        self.blocking_siggen.reset()
 
-    def initialize_specan_Generator(self):
-        self.specan = SpecAn(resource=self.settings.specan_address,logger_settings=self.settings.specan_logger_settings)
-        self.specan.reset()
-        self.specan.updateDisplay(on_off=True)
-        self.specan.setAppSwitch("SG")
-        self.specan.setSigGenFreq_Hz(self.settings.freq_list_hz[0] + self.settings.blocker_offset_start_freq_Hz)
-        self.specan.setSigGenPower_dBm(self.settings.blocker_start_power_dBm)
-        self.specan.setSigGenOutput_toggle(on_off=False) 
+        self.blocking_siggen_settings.amplitude_dbm = self.settings.blocker_start_power_dBm
+
+        # These settings shouldn't matter as modulation won't ever be turned on for this generator
+        # self.blocking_siggen_settings.modulation.type = "FSK"
+        # self.siggen_settings.modulation.symbolrate_sps = self.settings.siggen_modulation_symbolrate_sps
+        # self.siggen_settings.modulation.deviation_Hz = self.settings.siggen_modulation_deviation_Hz
+        # self.siggen_settings.filter_type = self.settings.siggen_filter_type
+        # self.siggen_settings.filter_BbT = self.settings.siggen_filter_BbT
+        # self.siggen_settings.trigger_type = self.settings.siggen_trigger_type
+        # self.siggen_settings.pattern_repeat = self.settings.siggen_pattern_repeat
+        # self.siggen_settings.stream_type = self.settings.siggen_stream_type
+
+        # self.siggen_settings.custom_on = self.settings.siggen_custom_on
+
+        # self.siggen_settings.per_packet_filename = self.settings.siggen_per_packet_filename
+        # self.siggen_settings.per_packet_siggen_name = self.settings.siggen_per_packet_siggen_name
+
+        self.blocking_siggen.setStream(self.siggen_settings)
+        self.blocking_siggen.toggleModulation(False)
+        self.blocking_siggen.toggleRFOut(False)
         if self.settings.blocker_power_list_dBm is None:
             self.settings.blocker_power_list_dBm = np.linspace(
                                                     self.settings.blocker_start_power_dBm,
@@ -914,7 +936,7 @@ class Blocking(Sensitivity):
         i = 1
         j = 1
         k = 1
-
+        
         for frequency in self.settings.freq_list_hz:
             
             self.siggen.setFrequency(frequency)
@@ -927,6 +949,8 @@ class Blocking(Sensitivity):
                     'Blocker Freq. Offset [MHz]':0,
                     'Blocker Abs. Power [dBm]':0,     
                 }
+            
+            self.logger.info("\nStarting sensitivity measurement")
             
             for sigGen_power in self.settings.siggen_power_list_dBm:
                 
@@ -972,22 +996,26 @@ class Blocking(Sensitivity):
                     break
 
             self.siggen.setAmplitude(sigGen_power + self.settings.desired_power_relative_to_sens_during_blocking_test_dB)
-            self.specan.setSigGenOutput_toggle(on_off=True)
+            self.blocking_siggen.toggleRFOut(rf_on=True)
+
+            self.logger.info("\nStarting blocking measurement")
 
             for blocker_offset_freq in self.settings.blocker_offset_freq_list_Hz:
                 
-                self.specan.setSigGenFreq_Hz(frequency + blocker_offset_freq)
+                self.blocking_siggen.setFrequency(frequency + blocker_offset_freq)
+
+                blocking_index = 1
 
                 for blocker_power in self.settings.blocker_power_list_dBm:
 
-                    self.specan.setSigGenPower_dBm(blocker_power)
+                    self.blocking_siggen.setAmplitude(blocker_power)
                     if self.settings.err_rate_type == 'BER':
                         err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
                     elif self.settings.err_rate_type == 'PER':
                         err_percent,done_percent,rssi = self.wstk.measurePer(npackets=100,interpacket_delay_s =self.settings.siggen_packet_delay_s,frequency_Hz=frequency,tx_start_function=self.siggen.sendTrigger)
                     else:
                         raise TypeError('Not recognized error rate string!')
-                    if i == 1 and done_percent == 0 and rssi == 0:
+                    if blocking_index == 1 and done_percent == 0 and rssi == 0:
                         print(self.settings.err_rate_type + " measurement failed, blocking test cancelled!")
                         ber_success = False
                         break
@@ -1005,6 +1033,7 @@ class Blocking(Sensitivity):
                     self.sheet_rawdata.write(i, 4, blocker_offset_freq/1e6)
                     self.sheet_rawdata.write(i, 5, blocker_power-self.settings.blocker_cable_attenuation_dB)
                     i += 1
+                    blocking_index += 1
 
                     record_df = pd.DataFrame(blocking_raw_measurement_record,index=[0])
                     record_df.to_csv(self.backup_csv_filename, mode='a', header=not path.exists(self.backup_csv_filename),index=False)
@@ -1021,7 +1050,7 @@ class Blocking(Sensitivity):
 
                         break
 
-            self.specan.setSigGenOutput_toggle(on_off=False)
+            self.blocking_siggen.toggleRFOut(rf_on=False)
 
         self.wstk._driver.reset()
 
@@ -1031,6 +1060,21 @@ class Blocking(Sensitivity):
             self.logger.info("excel workbook closed")
             if hasattr(self,'workbook'):
                 self.workbook.close()
+
+        try:
+            if hasattr(self,'blocking_siggen'):
+                self.blocking_siggen.toggleModulation(False)
+                self.blocking_siggen.toggleRFOut(False)
+                self.blocking_siggen.logger.handlers.clear()
+                del self.blocking_siggen
+        # if someone already closed the visa session
+        except visaerrors.InvalidSession:
+            self.blocking_siggen.logger.handlers.clear() 
+            self.initialize_blocking_generator() 
+            self.blocking_siggen.toggleModulation(False) 
+            self.blocking_siggen.toggleRFOut(False)
+            self.blocking_siggen.logger.handlers.clear()
+            del self.siggen
 
         try:
             if hasattr(self,'siggen'):
@@ -1055,7 +1099,8 @@ class Blocking(Sensitivity):
         # if someone already closed the visa session
         except visaerrors.InvalidSession:
             self.specan.logger.handlers.clear() 
-            self.initialize_specan_Generator() 
+            #self.initialize_specan_Generator() 
+            self.initialize_blocking_generator()
             self.specan.setSigGenOutput_toggle(False)
             self.specan.logger.handlers.clear()
             del self.specan
@@ -1088,7 +1133,7 @@ class Blocking(Sensitivity):
         if (self.settings.siggen_power_list_dBm[0] - self.settings.cable_attenuation_dB) > 10:
             raise ValueError("Too high input power injected!")
 
-        self.initialize_specan_Generator()
+        self.initialize_blocking_generator()
 
         # if self.settings.measure_with_CTUNE_w_SA:
         #     self.ctune_w_sa()
