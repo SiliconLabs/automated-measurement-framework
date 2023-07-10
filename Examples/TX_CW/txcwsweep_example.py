@@ -37,9 +37,11 @@ sweep_settings = TXCWSweep.Settings(
     specan_span_hz = 1e6,
     specan_rbw_hz = 100e3,
     specan_ref_level_dbm = 20,
+    harm_order_up_to=5,
+    pwr_levels=[100],
     psu_address = "ASRL8::INSTR", 
     specan_detector_type = "APE" , # Auto peak for Rohde&Schwarz instruments
-    # specan.setDetector("NORM"), # Anritsu: Simultaneous detection for positive and negative peaks
+    # specan_detector_type= "NORM", # Anritsu: Simultaneous detection for positive and negative peaks
     specan_logger_settings= Logger.Settings(logging_level=Level.INFO),
     wstk_logger_settings = Logger.Settings(logging_level=Level.INFO)
 )

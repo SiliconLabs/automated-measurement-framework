@@ -129,7 +129,6 @@ class Sensitivity():
         siggen_per_packet_siggen_name :str = "TEMP"
         siggen_pattern_repeat:str = "SINGle"
         siggen_trigger_type:str = "BUS"
-        siggen_packet_delay_s:float =0.001
         siggen_logger_settings: Logger.Settings = Logger.Settings()
 
         #SA settings
@@ -165,6 +164,13 @@ class Sensitivity():
         self.settings = settings
         self.chip_name = chip_name
         self.board_name = board_name
+
+        self.siggen_packet_delay_s = 0.001
+
+        self.ber_bytes_to_test = 1000
+        self.per_packets_to_test = 110
+        self.ber_timeout_ms = 1000
+        self.per_timeout_ms = 500
 
         timestamp = dt.now().timestamp()
         self.workbook_name = self.board_name + '_Sensitivity_results_'+str(int(timestamp))+'.xlsx'
@@ -335,6 +341,21 @@ class Sensitivity():
         #replace original xlsx file with new xlsx file containing the plots
         os.remove(self.workbook_name)
         os.rename(output_workbook_name, self.workbook_name)
+
+    def get_packet_length(self,data_csv_filename:str):
+        """Read and return the length of the PER packet in bits."""
+        try:
+            bin_df = pd.read_csv(data_csv_filename)
+        except FileNotFoundError:
+            self.logger.warn("Packet file not found! If using PN stream, ignore")
+            return
+        # define a lambda function to convert each hex value to a string
+        to_hex_string = lambda x: x[2:]
+        # apply the lambda function to each value in the 'mosi' column and concatenate them together
+        hex_data = ''.join(bin_df['mosi'].apply(to_hex_string))
+        length_in_bits = int(len(hex_data)*4)
+
+        return length_in_bits
     
     def initiate(self):
         
@@ -344,6 +365,24 @@ class Sensitivity():
         j = 1
         global ber_success
         ber_success = True
+
+        if self.settings.err_rate_type == 'PER':
+            # This should probably be bigger than this by some margin
+            self.siggen_packet_delay_s = self.get_packet_length(self.settings.siggen_per_packet_filename) / (self.settings.siggen_modulation_symbolrate_sps * self.settings.siggen_modulation_bits_per_symbol)
+            self.siggen_packet_delay_s *= 1.2
+            # self.per_timeout_ms = ?
+            # If the result is a very small number, return this to a good default value
+            if self.settings.siggen_packet_delay_s < 0.001:
+                self.settings.siggen_packet_delay_s = 0.001
+            self.logger.info(f"Automatically set PER packet delay: {self.settings.siggen_packet_delay_s} s")
+        elif self.settings.err_rate_type == 'BER':
+            # This should probably be bigger than this by some margin
+            self.ber_timeout_ms = 1000 * (self.ber_bytes_to_test * 8) / (self.settings.siggen_modulation_bits_per_symbol * self.settings.siggen_modulation_symbolrate_sps)
+            self.ber_timeout_ms *= 1.2
+            # If the result is a very small number, return this to a good default value
+            if self.ber_timeout_ms < 1000:
+                self.ber_timeout_ms = 1000
+            self.logger.info(f"Automaticall set BER timeout: {self.ber_timeout_ms} ms")
 
         for freq in self.settings.freq_list_hz:
 
@@ -361,9 +400,9 @@ class Sensitivity():
                 self.siggen.setAmplitude(siggen_power)
 
                 if self.settings.err_rate_type == 'BER':
-                    err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=freq)
+                    err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=self.ber_bytes_to_test, timeout_ms=self.ber_timeout_ms, frequency_Hz=freq)
                 elif self.settings.err_rate_type == 'PER':
-                    err_percent,done_percent,rssi = self.wstk.measurePer(npackets=100,interpacket_delay_s =self.settings.siggen_packet_delay_s,frequency_Hz=freq,tx_start_function=self.siggen.sendTrigger)
+                    err_percent,done_percent,rssi = self.wstk.measurePer(npackets=self.per_packets_to_test,interpacket_delay_s =self.siggen_packet_delay_s,frequency_Hz=freq,tx_start_function=self.siggen.sendTrigger, timeout_ms=self.per_timeout_ms)
                 else:
                     raise TypeError('Not recognized error rate string!')
                 if i == 1 and done_percent == 0 and rssi == 0:
@@ -957,9 +996,9 @@ class Blocking(Sensitivity):
                 self.siggen.setAmplitude(sigGen_power)
                 
                 if self.settings.err_rate_type == 'BER':
-                    err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
+                    err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=self.ber_bytes_to_test,timeout_ms=self.ber_timeout_ms,frequency_Hz=frequency)
                 elif self.settings.err_rate_type == 'PER':
-                    err_percent,done_percent,rssi = self.wstk.measurePer(npackets=100,interpacket_delay_s =self.settings.siggen_packet_delay_s,frequency_Hz=frequency,tx_start_function=self.siggen.sendTrigger)
+                    err_percent,done_percent,rssi = self.wstk.measurePer(npackets=self.per_packets_to_test,interpacket_delay_s =self.siggen_packet_delay_s,frequency_Hz=frequency,tx_start_function=self.siggen.sendTrigger)
                 else:
                     raise TypeError('Not recognized error rate string!')
                 if i == 1 and done_percent == 0 and rssi == 0:
@@ -1010,9 +1049,9 @@ class Blocking(Sensitivity):
 
                     self.blocking_siggen.setAmplitude(blocker_power)
                     if self.settings.err_rate_type == 'BER':
-                        err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
+                        err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=self.ber_bytes_to_test,timeout_ms=self.ber_timeout_ms,frequency_Hz=frequency)
                     elif self.settings.err_rate_type == 'PER':
-                        err_percent,done_percent,rssi = self.wstk.measurePer(npackets=100,interpacket_delay_s =self.settings.siggen_packet_delay_s,frequency_Hz=frequency,tx_start_function=self.siggen.sendTrigger)
+                        err_percent,done_percent,rssi = self.wstk.measurePer(npackets=self.per_packets_to_test,interpacket_delay_s =self.siggen_packet_delay_s,frequency_Hz=frequency,tx_start_function=self.siggen.sendTrigger)
                     else:
                         raise TypeError('Not recognized error rate string!')
                     if blocking_index == 1 and done_percent == 0 and rssi == 0:
@@ -1332,9 +1371,9 @@ class FreqOffset_Sensitivity(Sensitivity):
                     self.siggen.setAmplitude(sigGen_power)
 
                     if self.settings.err_rate_type == 'BER':
-                        err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=frequency)
+                        err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=self.ber_bytes_to_test,timeout_ms=self.ber_timeout_ms,frequency_Hz=frequency)
                     elif self.settings.err_rate_type == 'PER':
-                        err_percent,done_percent,rssi = self.wstk.measurePer(npackets=100,interpacket_delay_s =self.settings.siggen_packet_delay_s,frequency_Hz=frequency,tx_start_function=self.siggen.sendTrigger)
+                        err_percent,done_percent,rssi = self.wstk.measurePer(npackets=self.per_packets_to_test,interpacket_delay_s =self.siggen_packet_delay_s,frequency_Hz=frequency,tx_start_function=self.siggen.sendTrigger)
                     else:
                         raise TypeError('Not recognized error rate string!')
                     
@@ -1638,9 +1677,9 @@ class Waterfall(Sensitivity):
 
                 self.siggen.setAmplitude(siggen_power)
                 if self.settings.err_rate_type == 'BER':
-                    err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=10000,timeout_ms=1000,frequency_Hz=freq)
+                    err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=self.ber_bytes_to_test,timeout_ms=self.ber_timeout_ms,frequency_Hz=freq)
                 elif self.settings.err_rate_type == 'PER':
-                    err_percent,done_percent,rssi = self.wstk.measurePer(npackets=100,interpacket_delay_s =self.settings.siggen_packet_delay_s,frequency_Hz=freq,tx_start_function=self.siggen.sendTrigger)
+                    err_percent,done_percent,rssi = self.wstk.measurePer(npackets=self.per_packets_to_test,interpacket_delay_s =self.siggen_packet_delay_s,frequency_Hz=freq,tx_start_function=self.siggen.sendTrigger)
                 else:
                     raise TypeError('Not recognized error rate string!')
                 if i == 1 and done_percent == 0 and rssi == 0:
