@@ -246,15 +246,18 @@ class TXCWSweep():
                     while n <= self.settings.harm_order_up_to:
                         
                         self.specan.setFrequency(n * freq)
-
                     
                         measured_power = np.empty(len(self.settings.pwr_levels))
-
                         
                         self.wstk.setTxTone(on_off=False, mode="CW")
                         self.wstk.setPower(value=pl, format=self.settings.pwr_format)
                         self.wstk.setTxTone(on_off=True, mode="CW")
                         self.specan.initiate()
+
+                        # Get the sweep time of the device and add some margin of error
+                        sweeptime = self.specan.getSweepTime() * 1.2
+                        sleep(sweeptime)
+
                         marker = self.specan.getMaxMarker()
                         measured_power[k] = marker.value
                         meas_sum2D[k,n-1] = marker.value
@@ -290,6 +293,7 @@ class TXCWSweep():
                 for col, data in enumerate(results.T):
                     self.worksheet.write_column(self.row, col, data)  
                 self.row = self.row + len(self.settings.pwr_levels) 
+                self.wstk.setTxTone(on_off=False, mode="CW")
 
     def stop(self):
         # delete wstk to release serial port
