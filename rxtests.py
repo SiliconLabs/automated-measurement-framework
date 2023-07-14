@@ -149,8 +149,8 @@ class Sensitivity():
         wstk_logger_settings: Logger.Settings = Logger.Settings()
 
         # Test data quantities
-        ber_bytes_to_test = 10000
-        per_packets_to_test = 100
+        ber_bytes_to_test:int = 10000
+        per_packets_to_test:int = 100
 
 
     def __init__(self,settings:Settings,chip_name:str,board_name:str):
@@ -375,7 +375,7 @@ class Sensitivity():
             self.logger.info(f"Automatically set PER packet delay: {self.siggen_packet_delay_s} s")
         elif self.settings.err_rate_type == 'BER':
             # This should probably be bigger than this by some margin
-            self.ber_timeout_ms = 1000 * (self.ber_bytes_to_test * 8) / (self.settings.siggen_modulation_bits_per_symbol * self.settings.siggen_modulation_symbolrate_sps)
+            self.ber_timeout_ms = 1000 * (self.settings.ber_bytes_to_test * 8) / (self.settings.siggen_modulation_bits_per_symbol * self.settings.siggen_modulation_symbolrate_sps)
             self.ber_timeout_ms *= 1.2
             # If the result is a very small number, return this to a good default value
             if self.ber_timeout_ms < 1000:
@@ -400,7 +400,7 @@ class Sensitivity():
                 if self.settings.err_rate_type == 'BER':
                     err_percent,done_percent,rssi = self.wstk.measureBer(nbytes=self.settings.ber_bytes_to_test, timeout_ms=self.ber_timeout_ms, frequency_Hz=freq)
                 elif self.settings.err_rate_type == 'PER':
-                    err_percent,done_percent,rssi = self.wstk.measurePer(npackets=self.settings.per_packets_to_test,interpacket_delay_s =self.siggen_packet_delay_s,frequency_Hz=freq,tx_start_function=self.siggen.sendTrigger, timeout_ms=self.per_timeout_ms)
+                    err_percent,done_percent,rssi = self.wstk.measurePer(npackets=self.settings.per_packets_to_test,interpacket_delay_s =self.siggen_packet_delay_s,frequency_Hz=freq,tx_start_function=self.siggen.sendTrigger)
                 else:
                     raise TypeError('Not recognized error rate string!')
                 if i == 1 and done_percent == 0 and rssi == 0:

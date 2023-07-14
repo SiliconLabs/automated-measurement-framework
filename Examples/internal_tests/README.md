@@ -1,0 +1,1 @@
+This folder contains the scripts used to test the Automated Measurement Framework during development. These are not intended as examples or to be used for actual measurements.

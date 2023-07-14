@@ -9,4 +9,3 @@ app.log
 *.egg-info
 build/
 *.html
-Examples/internal_tests/
