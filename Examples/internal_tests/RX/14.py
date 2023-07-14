@@ -264,4 +264,7 @@ if Measure_Waterfall:
 if Measure_RSSI_Sweep:
     df = measurement_rssi_sweep.measure()
 
+os.rename("app.log", "14.log")
+
+
 #print(df.to_string())
