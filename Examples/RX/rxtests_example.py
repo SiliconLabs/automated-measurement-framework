@@ -243,24 +243,24 @@ rssi_sweep_settings = RSSI_Sweep.Settings(
     logger_settings=Logger.Settings(module_name="rxtests.rssi"),     
     siggen_logger_settings = Logger.Settings(logging_level=Level.INFO),
     specan_logger_settings = Logger.Settings(logging_level=Level.INFO),
-    wstk_logger_settings = Logger.Settings(logging_level=Level.INFO)
+    wstk_logger_settings = Logger.Settings(logging_level=Level.INFO),
 )
 
-measurement_sensitivity = Sensitivity(settings=sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
-measurement_blocking = Blocking(settings=blocking_settings,chip_name=Chip_Name,board_name=Board_Name)
-measurement_FreqOffset_sensitivity = FreqOffset_Sensitivity(settings=FreqOffset_sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
-measurement_waterfall = Waterfall(settings=sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
-measurement_rssi_sweep = RSSI_Sweep(settings=rssi_sweep_settings,chip_name=Chip_Name,board_name=Board_Name)
 
 if Measure_Sensitivity:
+    measurement_sensitivity = Sensitivity(settings=sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_sensitivity.measure()
 if Measure_Blocking_w_Sensitivity:
+    measurement_blocking = Blocking(settings=blocking_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_blocking.measure()
 if Measure_Sensitivity_w_FrequencyOffset:
+    measurement_FreqOffset_sensitivity = FreqOffset_Sensitivity(settings=FreqOffset_sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_FreqOffset_sensitivity.measure()
 if Measure_Waterfall:
+    measurement_waterfall = Waterfall(settings=sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_waterfall.measure()
 if Measure_RSSI_Sweep:
+    measurement_rssi_sweep = RSSI_Sweep(settings=rssi_sweep_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_rssi_sweep.measure()
 
 #print(df.to_string())

@@ -236,7 +236,13 @@ class Sensitivity():
         self.specan.setSpan(self.settings.specan_span_hz)
         self.specan.setRBW(self.settings.specan_rbw_hz)
         self.specan.setRefLevel(self.settings.specan_ref_level_dbm)
-        self.specan.setDetector(self.settings.specan_detector_type)
+        # This is only used for CTUNE_W_SA, so a good default detector type can be set
+        if type(self.specan).__name__ == "RS_SpectrumAnalyzer":
+            self.specan.setDetector("APE")
+        elif type(self.specan).__name__ == "Anritsu_SignalAnalyzer":
+            self.specan.setDetector("NORM")
+        else:
+            self.specan.setDetector(self.settings.specan_detector_type)
         self.specan.setRefOffset(self.settings.specan_ref_offset)
     
     def initialize_wstk(self):
@@ -1546,6 +1552,12 @@ class RSSI_Sweep(Sensitivity):
     
     def initiate(self):
             
+        if self.settings.siggen_stream_type != 'PN9' or self.settings.siggen_pattern_repeat != "CONT":
+            self.logger.warning("Setting stream type as PN9 and pattern repeat mode as CONT.")
+
+            self.siggen.setStreamType("PN9")
+            self.siggen.setPatternRepeat("CONT")
+
         self.siggen.toggleModulation(True)
         self.siggen.toggleRFOut(True)
         global ber_success
