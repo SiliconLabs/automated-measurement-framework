@@ -616,6 +616,8 @@ class Sensitivity():
         ctune_max = 255
         freq = self.settings.freq_list_hz[0]
 
+        self.siggen.setStreamType("PN9")
+        self.siggen.setPatternRepeat("CONT")
         self.siggen.setFrequency(freq)
         self.siggen.setAmplitude(-40)
         self.siggen.toggleModulation(True)
@@ -648,6 +650,9 @@ class Sensitivity():
 
         self.siggen.toggleModulation(False)
         self.siggen.toggleRFOut(False)
+
+        self.siggen.setPatternRepeat(self.settings.siggen_pattern_repeat)
+        self.siggen.setStreamType(self.settings.siggen_stream_type)
 
         self.wstk._driver.reset()
         self.wstk._driver.rx(on_off=False)
