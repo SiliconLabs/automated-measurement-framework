@@ -177,7 +177,10 @@ class TXCWSweep():
                                                     dtype=float
                                                     )
         if self.settings.pwr_levels is None:
-            self.settings.pwr_levels = np.linspace(self.settings.min_pwr_state, self.settings.max_pwr_state, self.settings.pwr_num_steps, dtype=int)
+            if self.settings.pwr_format == 'raw':
+                self.settings.pwr_levels = np.linspace(self.settings.min_pwr_state, self.settings.max_pwr_state, self.settings.pwr_num_steps, dtype=int)
+            else:
+                self.settings.pwr_levels = np.linspace(self.settings.min_pwr_state, self.settings.max_pwr_state, self.settings.pwr_num_steps, dtype=float)
 
     def initialize_reporter(self):
         self.workbook = xlsxwriter.Workbook(self.workbook_name)
@@ -293,12 +296,11 @@ class TXCWSweep():
                 for col, data in enumerate(results.T):
                     self.worksheet.write_column(self.row, col, data)  
                 self.row = self.row + len(self.settings.pwr_levels) 
-                self.wstk.setTxTone(on_off=False, mode="CW")
 
     def stop(self):
         # delete wstk to release serial port
         self.wstk.__del__()
-                # if workbook already exists no need to close again
+        # if workbook already exists no need to close again
         if not path.isfile(self.workbook_name):
             self.logger.info("excel workbook closed")
             if hasattr(self,'workbook'):

@@ -179,6 +179,24 @@ class Sensitivity():
         self.logger = Logger(self.settings.logger_settings)
         atexit.register(self.__del__)
 
+    def _set_measurement_times(self):
+        if self.settings.err_rate_type == 'PER':
+            # This should probably be bigger than this by some margin
+            self.siggen_packet_delay_s = self.get_packet_length(self.settings.siggen_per_packet_filename) / (self.settings.siggen_modulation_symbolrate_sps * self.settings.siggen_modulation_bits_per_symbol)
+            self.siggen_packet_delay_s *= 1.2
+            # self.per_timeout_ms = ?
+            # If the result is a very small number, return this to a good default value
+            if self.siggen_packet_delay_s < 0.001:
+                self.siggen_packet_delay_s = 0.001
+            self.logger.info(f"Automatically set PER packet delay: {self.siggen_packet_delay_s} s")
+        elif self.settings.err_rate_type == 'BER':
+            # This should probably be bigger than this by some margin
+            self.ber_timeout_ms = 1000 * (self.settings.ber_bytes_to_test * 8) / (self.settings.siggen_modulation_bits_per_symbol * self.settings.siggen_modulation_symbolrate_sps)
+            self.ber_timeout_ms *= 1.2
+            # If the result is a very small number, return this to a good default value
+            if self.ber_timeout_ms < 1000:
+                self.ber_timeout_ms = 1000
+            self.logger.info(f"Automaticall set BER timeout: {self.ber_timeout_ms} ms")
 
     def initialize_siggen(self):
         self.siggen = SigGen(resource=self.settings.siggen_address,logger_settings=self.settings.siggen_logger_settings)
@@ -364,23 +382,7 @@ class Sensitivity():
         global ber_success
         ber_success = True
 
-        if self.settings.err_rate_type == 'PER':
-            # This should probably be bigger than this by some margin
-            self.siggen_packet_delay_s = self.get_packet_length(self.settings.siggen_per_packet_filename) / (self.settings.siggen_modulation_symbolrate_sps * self.settings.siggen_modulation_bits_per_symbol)
-            self.siggen_packet_delay_s *= 1.2
-            # self.per_timeout_ms = ?
-            # If the result is a very small number, return this to a good default value
-            if self.siggen_packet_delay_s < 0.001:
-                self.siggen_packet_delay_s = 0.001
-            self.logger.info(f"Automatically set PER packet delay: {self.siggen_packet_delay_s} s")
-        elif self.settings.err_rate_type == 'BER':
-            # This should probably be bigger than this by some margin
-            self.ber_timeout_ms = 1000 * (self.settings.ber_bytes_to_test * 8) / (self.settings.siggen_modulation_bits_per_symbol * self.settings.siggen_modulation_symbolrate_sps)
-            self.ber_timeout_ms *= 1.2
-            # If the result is a very small number, return this to a good default value
-            if self.ber_timeout_ms < 1000:
-                self.ber_timeout_ms = 1000
-            self.logger.info(f"Automaticall set BER timeout: {self.ber_timeout_ms} ms")
+        self._set_measurement_times()
 
         for freq in self.settings.freq_list_hz:
 
@@ -788,6 +790,9 @@ class Blocking(Sensitivity):
         self.chip_name = chip_name
         self.board_name = board_name
 
+        self.siggen_packet_delay_s = 0.001
+        self.ber_timeout_ms = 1000
+
         timestamp = dt.now().timestamp()
         self.workbook_name = self.board_name + '_Blocking_results_'+str(int(timestamp))+'.xlsx'
 
@@ -804,21 +809,6 @@ class Blocking(Sensitivity):
         self.blocking_siggen.reset()
 
         self.blocking_siggen_settings.amplitude_dbm = self.settings.blocker_start_power_dBm
-
-        # These settings shouldn't matter as modulation won't ever be turned on for this generator
-        # self.blocking_siggen_settings.modulation.type = "FSK"
-        # self.siggen_settings.modulation.symbolrate_sps = self.settings.siggen_modulation_symbolrate_sps
-        # self.siggen_settings.modulation.deviation_Hz = self.settings.siggen_modulation_deviation_Hz
-        # self.siggen_settings.filter_type = self.settings.siggen_filter_type
-        # self.siggen_settings.filter_BbT = self.settings.siggen_filter_BbT
-        # self.siggen_settings.trigger_type = self.settings.siggen_trigger_type
-        # self.siggen_settings.pattern_repeat = self.settings.siggen_pattern_repeat
-        # self.siggen_settings.stream_type = self.settings.siggen_stream_type
-
-        # self.siggen_settings.custom_on = self.settings.siggen_custom_on
-
-        # self.siggen_settings.per_packet_filename = self.settings.siggen_per_packet_filename
-        # self.siggen_settings.per_packet_siggen_name = self.settings.siggen_per_packet_siggen_name
 
         self.blocking_siggen.setStream(self.siggen_settings)
         self.blocking_siggen.toggleModulation(False)
@@ -973,6 +963,8 @@ class Blocking(Sensitivity):
         i = 1
         j = 1
         k = 1
+
+        self._set_measurement_times()
         
         for frequency in self.settings.freq_list_hz:
             
@@ -1224,6 +1216,9 @@ class FreqOffset_Sensitivity(Sensitivity):
         self.chip_name = chip_name
         self.board_name = board_name
 
+        self.siggen_packet_delay_s = 0.001
+        self.ber_timeout_ms = 1000
+
         timestamp = dt.now().timestamp()
         self.workbook_name = self.board_name + '_FreqOffset_Sensitivity_results_'+str(int(timestamp))+'.xlsx'
 
@@ -1347,6 +1342,8 @@ class FreqOffset_Sensitivity(Sensitivity):
         i = 1
         k = 1
 
+        self._set_measurement_times()
+
         for frequency in self.settings.freq_list_hz:
 
             # self.siggen.setFrequency(frequency)
@@ -1450,6 +1447,9 @@ class RSSI_Sweep(Sensitivity):
         self.chip_name = chip_name
         self.board_name = board_name
 
+        self.siggen_packet_delay_s = 0.001
+        self.ber_timeout_ms = 1000
+
         timestamp = dt.now().timestamp()
         self.workbook_name = self.board_name + '_RSSI_Sweep_results_'+str(int(timestamp))+'.xlsx'
 
@@ -1547,6 +1547,8 @@ class RSSI_Sweep(Sensitivity):
         ber_success = True
         i = 1
 
+        self._set_measurement_times()
+
         for frequency in self.settings.freq_list_hz:
 
             self.wstk.receive(on_off=True, frequency_Hz=frequency, timeout_ms=1000)
@@ -1603,6 +1605,9 @@ class Waterfall(Sensitivity):
         self.chip_name = chip_name
         self.board_name = board_name
 
+        self.siggen_packet_delay_s = 0.001
+        self.ber_timeout_ms = 1000
+
         timestamp = dt.now().timestamp()
         self.workbook_name = self.board_name + '_Waterfall_results_'+str(int(timestamp))+'.xlsx'
 
@@ -1657,6 +1662,8 @@ class Waterfall(Sensitivity):
         j = 1
         global ber_success
         ber_success = True
+
+        self._set_measurement_times()
 
         for freq in self.settings.freq_list_hz:
 

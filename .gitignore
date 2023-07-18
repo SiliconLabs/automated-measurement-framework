@@ -9,3 +9,5 @@ app.log
 *.egg-info
 build/
 *.html
+*.log
+Examples/test_results/
