@@ -43,7 +43,8 @@ sweep_settings = TXCWSweep.Settings(
     specan_detector_type = "APE" , # Auto peak for Rohde&Schwarz instruments
     # specan_detector_type= "NORM", # Anritsu: Simultaneous detection for positive and negative peaks
     specan_logger_settings= Logger.Settings(logging_level=Level.INFO),
-    wstk_logger_settings = Logger.Settings(logging_level=Level.INFO)
+    wstk_logger_settings = Logger.Settings(logging_level=Level.INFO),
+    psu_logger_settings = Logger.Settings(logging_level=Level.INFO)
 )
 
 measurement = TXCWSweep(settings=sweep_settings,chip_name="EFR32FG23",board_name="BRD4204D")

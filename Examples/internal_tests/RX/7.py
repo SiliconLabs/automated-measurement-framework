@@ -40,7 +40,7 @@ CTUNE_Tuning_w_SG = False                           # CTUNE tuning with the sign
 Chip_Name = 'EFR32FG23'                             # Chip name of DUT
 Board_Name = 'BRD4210B'                             # Board name of DUT
 # Test Equipment and DUT Address Settings
-WSTK_COM_Port = 'COM4'                              # WSTK board COM port
+WSTK_COM_Port = 'COM10'                              # WSTK board COM port
 SigGen_Address = 'GPIB2::28::INSTR'                  # Signal Generator address
 SpecAn_Address = 'TCPIP::169.254.0.3::INSTR'      # Spectrum Analyzer address
 Blocking_Siggen_Address = 'TCPIP::169.254.88.77::INSTR' # Address of the generator used to generate blocking signal
@@ -247,22 +247,20 @@ rssi_sweep_settings = RSSI_Sweep.Settings(
     wstk_logger_settings = Logger.Settings(logging_level=Level.INFO)
 )
 
-measurement_sensitivity = Sensitivity(settings=sensitivity_settings,chip_name="7",board_name="7")
-measurement_blocking = Blocking(settings=blocking_settings,chip_name=Chip_Name,board_name=Board_Name)
-measurement_FreqOffset_sensitivity = FreqOffset_Sensitivity(settings=FreqOffset_sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
-measurement_waterfall = Waterfall(settings=sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
-measurement_rssi_sweep = RSSI_Sweep(settings=rssi_sweep_settings,chip_name=Chip_Name,board_name=Board_Name)
-
 if Measure_Sensitivity:
+    measurement_sensitivity = Sensitivity(settings=sensitivity_settings,chip_name="7",board_name="7")
     df = measurement_sensitivity.measure()
-    os.rename("app.log", "7.log")
 if Measure_Blocking_w_Sensitivity:
+    measurement_blocking = Blocking(settings=blocking_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_blocking.measure()
 if Measure_Sensitivity_w_FrequencyOffset:
+    measurement_FreqOffset_sensitivity = FreqOffset_Sensitivity(settings=FreqOffset_sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_FreqOffset_sensitivity.measure()
 if Measure_Waterfall:
+    measurement_waterfall = Waterfall(settings=sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_waterfall.measure()
 if Measure_RSSI_Sweep:
+    measurement_rssi_sweep = RSSI_Sweep(settings=rssi_sweep_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_rssi_sweep.measure()
 
 #print(df.to_string())

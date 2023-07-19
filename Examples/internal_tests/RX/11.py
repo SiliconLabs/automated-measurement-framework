@@ -40,8 +40,8 @@ CTUNE_Tuning_w_SG = True                           # CTUNE tuning with the signa
 Chip_Name = 'EFR32FG23'                             # Chip name of DUT
 Board_Name = 'BRD4210B'                             # Board name of DUT
 # Test Equipment and DUT Address Settings
-WSTK_COM_Port = 'COM4'                              # WSTK board COM port
-SigGen_Address = 'GPIB1::5::INSTR'                  # Signal Generator address
+WSTK_COM_Port = 'COM10'                              # WSTK board COM port
+SigGen_Address = 'GPIB2::28::INSTR'                  # Signal Generator address
 SpecAn_Address = 'TCPIP::169.254.0.3::INSTR'      # Spectrum Analyzer address
 Blocking_Siggen_Address = 'TCPIP::169.254.88.77::INSTR' # Address of the generator used to generate blocking signal
 # Desired Signal Test Frequencies
@@ -51,7 +51,7 @@ Frequency_Num_Steps = 31                            # Number of frequency points
 Frequency_List_Hz = [868e6,915e6]                  # List of Test frequencies. This list is used when given, if it is None then list is created from start, stop and steps defined above.
 # Inpu power and modulation settings
 SigGen_Power_Start_dBm = -110                       # Signal Generator start power, used on the desired signal path
-SigGen_Power_Stop_dBm = -120                        # Signal Generator stop power, used on the desired signal path
+SigGen_Power_Stop_dBm = -130                        # Signal Generator stop power, used on the desired signal path
 SigGen_Power_Num_Steps = 21
 SigGen_Power_List = None                        # Number of power steps, used on the desired signal path
 Modulation_Type = 'FSK2'                            # Modulation type
@@ -66,7 +66,7 @@ Plot_Bathtub = False
 Pattern_Repeat = 'CONT'
 Per_Packet_Filename = "std_rail_packet.csv"
 
-#uncomment for PER
+# #uncomment for PER
 # Error_Rate_Type = 'PER'
 # Stream_Type ='\"TEMP@BIT\"'                                 # for BER this should be 'PN9', for PER this is the packet name on the generator
 # Error_Rate_Threshold = 15
@@ -101,6 +101,7 @@ Frequency_SigGen_List_Hz = None                     # List of SigGen frequencies
 # SA settings during CTUNE tuning
 SA_Span_CTUNE = 200e3                               # SA span setting during CTUNE tuning
 SA_Rbw_CTUNE = 10e3                                 # SA RBW setting during CTUNE tuning
+
 #################################################################################################################################################
 
 sensitivity_settings = Sensitivity.Settings(
@@ -135,7 +136,7 @@ sensitivity_settings = Sensitivity.Settings(
     specan_logger_settings = Logger.Settings(logging_level=Level.INFO),
     wstk_logger_settings = Logger.Settings(logging_level=Level.INFO),
     ber_bytes_to_test=1000,
-    per_packets_to_test=50,
+    per_packets_to_test=50
 )
 
 blocking_settings = Blocking.Settings(
@@ -249,22 +250,19 @@ rssi_sweep_settings = RSSI_Sweep.Settings(
     wstk_logger_settings = Logger.Settings(logging_level=Level.INFO)
 )
 
-measurement_sensitivity = Sensitivity(settings=sensitivity_settings,chip_name="11",board_name="11")
-measurement_blocking = Blocking(settings=blocking_settings,chip_name=Chip_Name,board_name=Board_Name)
-measurement_FreqOffset_sensitivity = FreqOffset_Sensitivity(settings=FreqOffset_sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
-measurement_waterfall = Waterfall(settings=sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
-measurement_rssi_sweep = RSSI_Sweep(settings=rssi_sweep_settings,chip_name=Chip_Name,board_name=Board_Name)
-
 if Measure_Sensitivity:
+    measurement_sensitivity = Sensitivity(settings=sensitivity_settings,chip_name="11",board_name="11")
     df = measurement_sensitivity.measure()
-    os.rename("app.log", "11.log")
 if Measure_Blocking_w_Sensitivity:
+    measurement_blocking = Blocking(settings=blocking_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_blocking.measure()
 if Measure_Sensitivity_w_FrequencyOffset:
+    measurement_FreqOffset_sensitivity = FreqOffset_Sensitivity(settings=FreqOffset_sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_FreqOffset_sensitivity.measure()
 if Measure_Waterfall:
+    measurement_waterfall = Waterfall(settings=sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_waterfall.measure()
 if Measure_RSSI_Sweep:
+    measurement_rssi_sweep = RSSI_Sweep(settings=rssi_sweep_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_rssi_sweep.measure()
-
 #print(df.to_string())

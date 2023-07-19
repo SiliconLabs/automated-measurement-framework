@@ -1,75 +1,75 @@
 The folder contains the following tests:
 - 1: 
   - HP High BW BER measurement with SA Ctune (Anritsu)
-  - **PHY:** High BW 
+  - **PHY:** High BW BER
   - **INST:** Anritsu spectrum -> HP siggen
 - 2:
   - HP High BW PER
   - Frequency min/max sweep
   - Siggen power list sweep
-  - **PHY:** High BW 
+  - **PHY:** High BW PER
   - **INST:** HP siggen
 - 3:
   - HP High BW frequency offset
   - Frequency offset list sweep
-  - **PHY:** High BW 
+  - **PHY:** High BW PER
   - **INST:** HP siggen
 - 4: 
   - HP High BW RSSI sweep
   - RSSI frequency list sweep
-  - **PHY:** High BW
+  - **PHY:** High BW PER
   - **INST:** HP siggen
 - 5:
   - HP Low BW BER with SG Ctune
-  - **PHY:** Low BW
+  - **PHY:** Low BW BER
   - **INST:** HP siggen
 - 6: 
   - HP Low BW PER with SG Ctune
-  - **PHY:** Low BW
+  - **PHY:** Low BW PER 
   - **INST:** HP siggen
 - 7:
   - RS High BW BER with SA Ctune (FSV)
-  - **PHY:** High BW
+  - **PHY:** High BW BER
   - **INST:** FSV -> RS siggen
 - 8:
-  - RS High BW PER
-  - **PHY:** High BW 
+  - RS High BW PER 
+  - **PHY:** High BW PER
   - **INST:** RS siggen
 - 9:
   - RS frequency offset
-  - **PHY:** High BW
+  - **PHY:** High BW PER
   - **INST:** RS siggen
 - 10:
   - RS RSSI
-  - **PHY:** High BW
+  - **PHY:** High BW PER 
   - **INST:** RS siggen
 - 11:
   - RS Low BW BER with SG CTUNE
-  - **PHY:** Low BW
+  - **PHY:** Low BW BER
   - **INST:** RS siggen
 - 12:
   - RS Low BW PER with SG CTUNE
-  - **PHY:** Low BW
+  - **PHY:** Low BW PER
   - **INST:** RS siggen
 - 13:
   - Blocking: Anritsu blocker, HP useful
   - Blocker freq. list sweep
   - Blocker power list sweep
-  - **PHY:** High BW 
+  - **PHY:** High BW PER
   - **INST:** Anritsu + HP through combiner
 - 14:
   - Blocking: Anritsu blocker, RS useful
   - Blocker freq. min/max sweep
   - Blocker power min/max sweep
-  - **PHY:** High BW 
+  - **PHY:** High BW PER
   - **INST:** Anritsu + RS through combiner
 - 15:
   - Blocking: RS blocker, HP useful
-  - **PHY:** High BW
+  - **PHY:** High BW PER
   - **INST:** RS + HP through combiner
 - 16: 
   - Blocking: HP blocker, RS useful
-  - **PHY:** High BW
+  - **PHY:** High BW PER 
   - **INST:** HP + RS through combiner
 
 Parameters of the used PHYs:

@@ -19,7 +19,7 @@ except ModuleNotFoundError:
     # This is needed for the current folder structure of the examples. Scripts placed in the main folder won't need this.
     # This assumes that the script is 2 folders deep compared to the main folder. 
     import sys
-    sys.path.append('../../')
+    sys.path.append('../../../')
 
 from rxtests import Sensitivity, Blocking, FreqOffset_Sensitivity, RSSI_Sweep, Waterfall
 from common import Logger, Level
@@ -40,7 +40,7 @@ CTUNE_Tuning_w_SG = False                           # CTUNE tuning with the sign
 Chip_Name = '15'                             # Chip name of DUT
 Board_Name = '15'                             # Board name of DUT
 # Test Equipment and DUT Address Settings
-WSTK_COM_Port = 'COM4'                              # WSTK board COM port
+WSTK_COM_Port = 'COM10'                              # WSTK board COM port
 SigGen_Address = 'GPIB1::5::INSTR'                  # Signal Generator address
 SpecAn_Address = 'TCPIP::169.254.88.77::INSTR'      # Spectrum Analyzer address
 Blocking_Siggen_Address = 'GPIB2::28::INSTR' # Address of the generator used to generate blocking signal
@@ -50,8 +50,8 @@ Frequency_Stop_Hz = 928e6                           # Test frequency stop
 Frequency_Num_Steps = 31                            # Number of frequency points between start and stop defined above
 Frequency_List_Hz = [868e6]                  # List of Test frequencies. This list is used when given, if it is None then list is created from start, stop and steps defined above.
 # Inpu power and modulation settings
-SigGen_Power_Start_dBm = -90                       # Signal Generator start power, used on the desired signal path
-SigGen_Power_Stop_dBm = -110                        # Signal Generator stop power, used on the desired signal path
+SigGen_Power_Start_dBm = -85                       # Signal Generator start power, used on the desired signal path
+SigGen_Power_Stop_dBm = -105                        # Signal Generator stop power, used on the desired signal path
 SigGen_Power_Num_Steps = 31
 SigGen_Power_List = None                        # Number of power steps, used on the desired signal path
 Modulation_Type = 'FSK2'                            # Modulation type
@@ -84,9 +84,9 @@ Blocker_FrequencyOffset_Stop_Hz = 8e6               # blocker signal stop freque
 Blocker_FrequencyOffset_Num_Steps = 5               # number of frequency offset points of the blocker signal
 Blocker_FrequencyOffset_List_Hz = None       # List of frequency offset points of the blocker signal. This list is used when given, if it is None then list is created from start, stop and steps defined above.
 # Blocker power settings (CW)
-Blocker_Power_Start_dBm = -50                       # blocker signal start power
+Blocker_Power_Start_dBm = -40                       # blocker signal start power
 Blocker_Power_Stop_dBm = -5                         # blocker signal stop power
-Blocker_Power_Num_Steps = 46                        # number of blocker power levels
+Blocker_Power_Num_Steps = 36                        # number of blocker power levels
 Blocker_Power_List_dBm = None                       # List of power points of the blocker signal. This list is used when given, if it is None then list is created from start, stop and steps defined above.
 # Offset frequencies for freq-offset sensitivitiy tests
 Frequency_Offset_Start_Hz = -2e3                  # frequency offset start for offset-Sensitivity test
@@ -174,7 +174,8 @@ blocking_settings = Blocking.Settings(
     logger_settings=Logger.Settings(module_name="rxtests.blocking"),
     siggen_logger_settings = Logger.Settings(logging_level=Level.INFO),
     specan_logger_settings = Logger.Settings(logging_level=Level.INFO),
-    wstk_logger_settings = Logger.Settings(logging_level=Level.INFO)
+    wstk_logger_settings = Logger.Settings(logging_level=Level.INFO),
+    blocking_siggen_logger_settings= Logger.Settings(logging_level=Level.INFO)
 )
 
 FreqOffset_sensitivity_settings = FreqOffset_Sensitivity.Settings(
@@ -247,24 +248,20 @@ rssi_sweep_settings = RSSI_Sweep.Settings(
     wstk_logger_settings = Logger.Settings(logging_level=Level.INFO)
 )
 
-measurement_sensitivity = Sensitivity(settings=sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
-measurement_blocking = Blocking(settings=blocking_settings,chip_name=Chip_Name,board_name=Board_Name)
-measurement_FreqOffset_sensitivity = FreqOffset_Sensitivity(settings=FreqOffset_sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
-measurement_waterfall = Waterfall(settings=sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
-measurement_rssi_sweep = RSSI_Sweep(settings=rssi_sweep_settings,chip_name=Chip_Name,board_name=Board_Name)
-
 if Measure_Sensitivity:
+    measurement_sensitivity = Sensitivity(settings=sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_sensitivity.measure()
 if Measure_Blocking_w_Sensitivity:
+    measurement_blocking = Blocking(settings=blocking_settings,chip_name="15",board_name="15")
     df = measurement_blocking.measure()
 if Measure_Sensitivity_w_FrequencyOffset:
+    measurement_FreqOffset_sensitivity = FreqOffset_Sensitivity(settings=FreqOffset_sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_FreqOffset_sensitivity.measure()
 if Measure_Waterfall:
+    measurement_waterfall = Waterfall(settings=sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_waterfall.measure()
 if Measure_RSSI_Sweep:
+    measurement_rssi_sweep = RSSI_Sweep(settings=rssi_sweep_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_rssi_sweep.measure()
-
-os.rename("app.log", "15.log")
-
 
 #print(df.to_string())

@@ -20,7 +20,7 @@ sweep_settings = TXCWSweep.Settings(
     freq_list_hz = [868e6],
     psu_present = False,
     pavdd_levels = [3.0,3.3],
-    wstk_com_port = "COM4",
+    wstk_com_port = "COM10",
     specan_address = 'TCPIP::169.254.0.3::INSTR',
     specan_span_hz = 1e6,
     specan_rbw_hz = 100e3,
@@ -40,14 +40,12 @@ df = measurement.measure()
 
 print(df.to_string())
 
-os.rename("app.log", "5.log")
-
 # Test 6
 sweep_settings = TXCWSweep.Settings(
     freq_list_hz = [868e6],
     psu_present = False,
     pavdd_levels = [3.0,3.3],
-    wstk_com_port = "COM4",
+    wstk_com_port = "COM10",
     specan_address = 'TCPIP::169.254.0.3::INSTR',
     specan_span_hz = 1e6,
     specan_rbw_hz = 1e3,
@@ -66,5 +64,3 @@ measurement = TXCWSweep(settings=sweep_settings,chip_name="6",board_name="6")
 df = measurement.measure()
 
 print(df.to_string())
-
-os.rename("app.log", "6.log")

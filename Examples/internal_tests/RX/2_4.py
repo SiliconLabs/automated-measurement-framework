@@ -23,7 +23,6 @@ except ModuleNotFoundError:
 
 from rxtests import Sensitivity, Blocking, FreqOffset_Sensitivity, RSSI_Sweep, Waterfall
 from common import Logger, Level
-import os
 
 #################################################################################################################################################
 
@@ -40,7 +39,7 @@ CTUNE_Tuning_w_SG = False                           # CTUNE tuning with the sign
 Chip_Name = 'EFR32FG23'                             # Chip name of DUT
 Board_Name = 'BRD4210B'                             # Board name of DUT
 # Test Equipment and DUT Address Settings
-WSTK_COM_Port = 'COM4'                              # WSTK board COM port
+WSTK_COM_Port = 'COM10'                              # WSTK board COM port
 SigGen_Address = 'GPIB1::5::INSTR'                  # Signal Generator address
 SpecAn_Address = 'TCPIP::169.254.88.77::INSTR'      # Spectrum Analyzer address
 Blocking_Siggen_Address = 'TCPIP::169.254.88.77::INSTR' # Address of the generator used to generate blocking signal
@@ -92,7 +91,7 @@ Blocker_Power_List_dBm = None                       # List of power points of th
 Frequency_Offset_Start_Hz = -2e3                  # frequency offset start for offset-Sensitivity test
 Frequency_Offset_Stop_Hz = 2e3                     # frequency offset stop for offset-Sensitivity test
 Frequency_Offset_Steps = 21                         # number of frequency offset steps during offset-Sensitivity test                      
-Frequency_Offset_List_Hz = [-20e3,-10e3,10e3,20e3]                  # List of frequency offsets. This list is used when given, if it is None then list is created from start, stop and steps defined above.
+Frequency_Offset_List_Hz = [-20e3, 20e3]                  # List of frequency offsets. This list is used when given, if it is None then list is created from start, stop and steps defined above.
 # Input frequency settings for RSSI sweep tests
 Frequency_SigGen_Start_Hz = 868e6                   # SigGen frequency start for rssi sweep test
 Frequency_SigGen_Stop_Hz = 915e6                    # SigGen frequency stop for rssi sweep test
@@ -247,24 +246,20 @@ rssi_sweep_settings = RSSI_Sweep.Settings(
     wstk_logger_settings = Logger.Settings(logging_level=Level.INFO)
 )
 
-measurement_sensitivity = Sensitivity(settings=sensitivity_settings,chip_name="2",board_name="2")
-measurement_blocking = Blocking(settings=blocking_settings,chip_name=Chip_Name,board_name=Board_Name)
-measurement_FreqOffset_sensitivity = FreqOffset_Sensitivity(settings=FreqOffset_sensitivity_settings,chip_name="3",board_name="3")
-measurement_waterfall = Waterfall(settings=sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
-measurement_rssi_sweep = RSSI_Sweep(settings=rssi_sweep_settings,chip_name="4",board_name="4")
-
 if Measure_Sensitivity:
+    measurement_sensitivity = Sensitivity(settings=sensitivity_settings,chip_name="2",board_name="2")
     df = measurement_sensitivity.measure()
-    os.rename("app.log", "2.log")
 if Measure_Blocking_w_Sensitivity:
+    measurement_blocking = Blocking(settings=blocking_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_blocking.measure()
 if Measure_Sensitivity_w_FrequencyOffset:
+    measurement_FreqOffset_sensitivity = FreqOffset_Sensitivity(settings=FreqOffset_sensitivity_settings,chip_name="3",board_name="3")
     df = measurement_FreqOffset_sensitivity.measure()
-    os.rename("app.log", "3.log")
 if Measure_Waterfall:
+    measurement_waterfall = Waterfall(settings=sensitivity_settings,chip_name=Chip_Name,board_name=Board_Name)
     df = measurement_waterfall.measure()
 if Measure_RSSI_Sweep:
+    measurement_rssi_sweep = RSSI_Sweep(settings=rssi_sweep_settings,chip_name="4",board_name="4")
     df = measurement_rssi_sweep.measure()
-    os.rename("app.log", "4.log")
 
 #print(df.to_string())
