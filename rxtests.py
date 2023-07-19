@@ -142,7 +142,7 @@ class Sensitivity():
 
         #Blocking siggen settings
         blocking_address: str = 'TCPIP::169.254.88.77::INSTR'
-        blocking_logger_settings: Logger.Settings = Logger.Settings()
+        blocking_siggen_logger_settings: Logger.Settings = Logger.Settings()
 
         #WSTK settings
         wstk_com_port: str = ""
@@ -680,7 +680,8 @@ class Sensitivity():
                 self.siggen.toggleModulation(False)
                 self.siggen.toggleRFOut(False)
                 self.siggen.logger.handlers.clear()
-                del self.siggen
+                # This caused weird errors when running multiple measurements from one file
+                # del self.siggen
         # if someone already closed the visa session
         except visaerrors.InvalidSession:
             self.siggen.logger.handlers.clear() 
@@ -688,7 +689,8 @@ class Sensitivity():
             self.siggen.toggleModulation(False) 
             self.siggen.toggleRFOut(False)
             self.siggen.logger.handlers.clear()
-            del self.siggen
+            # This caused weird errors when running multiple measurements from one file
+            # del self.siggen
 
         try:
             if hasattr(self,'wstk'):
@@ -815,7 +817,7 @@ class Blocking(Sensitivity):
             
     # Based on initialize_siggen
     def initialize_blocking_generator(self):
-        self.blocking_siggen = SigGen(resource=self.settings.blocking_address,logger_settings=self.settings.blocking_logger_settings)
+        self.blocking_siggen = SigGen(resource=self.settings.blocking_address,logger_settings=self.settings.blocking_siggen_logger_settings)
         self.blocking_siggen_settings = SigGenSettings()
         self.blocking_siggen.reset()
 

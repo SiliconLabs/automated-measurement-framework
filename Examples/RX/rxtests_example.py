@@ -173,7 +173,8 @@ blocking_settings = Blocking.Settings(
     logger_settings=Logger.Settings(module_name="rxtests.blocking"),
     siggen_logger_settings = Logger.Settings(logging_level=Level.INFO),
     specan_logger_settings = Logger.Settings(logging_level=Level.INFO),
-    wstk_logger_settings = Logger.Settings(logging_level=Level.INFO)
+    wstk_logger_settings = Logger.Settings(logging_level=Level.INFO),
+    blocking_siggen_logger_settings= Logger.Settings(logging_level=Level.INFO)
 )
 
 FreqOffset_sensitivity_settings = FreqOffset_Sensitivity.Settings(
