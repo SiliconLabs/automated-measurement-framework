@@ -2,7 +2,7 @@
 
 The goal of this project is to provide an open source solution for the automation of RF measurements, focused on measuring devices using Silicon Laboratories products. This enables customers of Silicon Laboratories to perform standardized measurements, while automating the repetitive steps in the process.
 
-### Features:
+## Features:
 
 - Fully automatic and repeatable measurements and tests
 - Automatic and non-intrusive installation (doesn't effect local Python)
@@ -10,7 +10,7 @@ The goal of this project is to provide an open source solution for the automatio
 - Highly costumizable (fully open source)
 - Easy to read and easy to process outputs (available as both Excel files and Pandas dataframes)
 
-### Getting started:
+## Getting started:
 
 First, it is recommended to read everything found on this page. After that, the *TxCWPower* or *RX* examples are a great way to start out with using the framework. For these scripts, you can also find detailed getting started guides in the appropriate folder. Most of the measurements needed in everyday RF development can be done using only these two examples.
 
@@ -18,24 +18,29 @@ There are also small examples provided for each instrument driver. You can use t
 
 The documentation for the classes can be found in the README files for the examples and in the code itself as comments.
 
-### Provided examples:
+## Provided examples:
 
-- TX CW Power Sweep
-  - With optional harmonics power measurement
-- RX
-  - Sensitivity (both BER and PER)
+### Recommended starting points:
+These are examples that have good documentation and "Getting started" guides.
+- **RX:** 
+  - Sensitivity (BER/PER)
   - Waterfall diagram
   - RSSI sweep
-  - Sensitivity with frequency offset
-  - CTUNE calibration
-- Telec245
-  - Contains every measurement needed for a whole T254 certification
-  - For this example to work, a special RAILTest configuration has to be appled to the DUT (you can read more about this in the folder of the example)
-- DcDcSpur
-  - DC-DC spur level measurements in TX mode
-- Instrument driver examples
+  - Blocking performance
+  - Automatic CTUNE calibration
+- **TX_CW:** 
+  - TX CW power measurement (with automatic harmonic power measurements)
+- **Instrument drivers:** 
+  - These can be used to test some basic functionalities implemented in the instrument drivers. It is recommended to try these if you have problems with controlling your instruments.
 
-### Supported devices:
+### Other examples:
+These are more specific examples that have less documentation and thus are not that suitable for new users. However, they are great for demonstrating how parts of the framework could be used to develop your own applications.
+- **Telec245:** 
+  - A whole T254 certification measurement for the EFR32FG25
+- **DcDc_Spurs:** 
+  - DC-DC spur level measurements in TX CW mode
+
+## Supported devices:
 
 In terms of devices that can be tested, currently only Series 1 and 2 EFR32 devices are supported (the ones that can be used with the RAILTest application). The framework was tested during development with the following instruments (but other instruments from the same manufacturer are likely compatible, and also custom instruments can be added easily, as the framework uses SCPI commands to communicate with them):
 
