@@ -12,9 +12,9 @@ The goal of this project is to provide an open source solution for the automatio
 
 ### Getting started:
 
-First, it is recommended to read everything found on this page. After that, the *TxCWPower* or *RX* examples are a great way to start out with using the framework. For these scripts, you can also find detailed getting started guides in the appropriate folder.
+First, it is recommended to read everything found on this page. After that, the *TxCWPower* or *RX* examples are a great way to start out with using the framework. For these scripts, you can also find detailed getting started guides in the appropriate folder. Most of the measurements needed in everyday RF development can be done using only these two examples.
 
-There are also small examples provided for each instrument driver. It is recommended to first try these, to see if the framework is able to control your instruments through the provided drivers (located in the *pyspecan*, *pysiggen*, *pywstk* and *pypsu* submodules).
+There are also small examples provided for each instrument driver. You can use these to try out the basic functions provided by these submodules. 
 
 The documentation for the classes can be found in the README files for the examples and in the code itself as comments.
 
@@ -39,7 +39,11 @@ The documentation for the classes can be found in the README files for the examp
 
 In terms of devices that can be tested, currently only Series 1 and 2 EFR32 devices are supported (the ones that can be used with the RAILTest application). The framework was tested during development with the following instruments (but other instruments from the same manufacturer are likely compatible, and also custom instruments can be added easily, as the framework uses SCPI commands to communicate with them):
 
-- 
+- Anritsu MS2692A spectrum analyzer (can be used as a CW generator as well)
+- Rohde&Schwarz FSV spectrum analyzer
+- Keysight E3646A power supply
+- Rohde&Schwarz SMBV100A signal generator
+- HP E4432B signal generator
 
 ---
 
@@ -157,3 +161,7 @@ Most common SCPI errors, these usually rise when new instruments are added to th
 - `420, "Query UNTERMINATED"` : Not having the correct termination character can also cause this error too. Or sending an incorrect query can generate this. 
 
 Check [Tektronix's write-up]( https://www.tek.com/en/documents/application-note/eliminating-common-scpi-errors) for a more verbose guide.
+
+# Disclaimer
+
+Everything in this repository is provided AS IS. By downloading and using the framework, the user assumes and bears all liability emerging from the application of it.

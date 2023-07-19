@@ -5,19 +5,21 @@ This example allows the user to perform various RX measurements using a signal g
 - Sensitivity with frequency offset
 - Waterfall diagram
 - RSSI sweep
+- Blocking performance
 
 As these measurements are all derivatives of the Sensitivity class, we will focus on doing a basic sensitivity measurement in the "Getting started" section. All other measurement options can be easily figured out from the class documentations in this page.
 
 Required instruments: 
 
 - Silicon Laboratories EFR32 with RAILTest configured
-- Signal generator (tested with ... )
+- Signal generator (tested with Rohde&Schwarz SMBV100A and HP E4432B)
 - (optional) Shielded box
-- (for blocking) Other signal generator or spectrum analyzer with generator functionality (tested with ...)
+- (for blocking) Other signal generator or spectrum analyzer with generator functionality (tested with Rohde&Schwarz SMBV100A, HP E4432B and Anritsu MS2692A)
+- (optional) Spectrum analyzer for automatic CTUNE setting (tested with Anritsu MS2692A and Rohde&Schwarz FSV)
 
 ## Getting started
 
-Follow these steps to start measuring CW TX power with the Automated Measurement Framework:
+Follow these steps to start measuring RX performance with the Automated Measurement Framework:
 
 1. Install the framework by following the steps described in the README of the main folder
 2. Activate the virtual environment by running the `activate_environment` script from PowerShell
@@ -30,17 +32,14 @@ Follow these steps to start measuring CW TX power with the Automated Measurement
 5. In the code: 
    1. Set the chip and board names (these will only be used for documenting the results)
    2. Set the COM port of the WSTK (can be found in device manager for example)
-   3. Set the VISA address of the signal generator and the (optional) spectrum analyzer
-      - In the example ...
-      - If in doubt, you can run `pyvisa-shell` in the command line and then type `list`. This brings up a list with all the instrument addresses that VISA recognizes.
+   3. Set the VISA address of the signal generator(s) and the (optional) spectrum analyzer
+      - If in doubt, you can run `pyvisa-shell` in the command line and then type `list`. This brings up a list with all the instrument addresses that VISA recognizes. Then you can try opening the instruments to see if the visa connection can be established.
    4. Set the cable attenuation of the signal path (for blocking tests, this needs to be set separately for the blocker path). The script uses this to correct the actual measured values.
-   4. Configure the parameters ...
+   5. Configure the parameters of the measurement
+      - You can find all the available parameters in the `Settings` class of the chosen measurement
+      - Automatic CTUNE calibration can be done by setting the appropriate variable to `True`. There are 2 options for this: using a spectrum analyzer or using a signal generator. It is of course more comfortable to use the signal generator as this option doesn't require you to change the RF connection during the measurement, but with high BW PHYs this can be very inaccurate (as this method uses RSSI as an indicator of how well the center frequency is tuned)
+      - When doing PER measurements, please make sure to uncomment the appropriate block of code. For this, you also need to have a packet file in the folder (we supply a 16 byte long standard RAIL packet file with the framework).
 6. Run the *rxtests_example.py* Python script from the virtual environment usin `py rxtests_example.py` in the correct folder. The output will be an excel file with all the measured raw data and output graphs.
-
-
-### How to make PER measurements
-
-Creating BER measurements is fairly straightforward, as it only involves setting the right modulation parameters and a PN9 stream on a generator, and from there the EFR can measure BER itself. PER measurements however are a bit more complicated, as a valid packet for the given PHY has to be loaded onto the generator...
 
 --- 
 

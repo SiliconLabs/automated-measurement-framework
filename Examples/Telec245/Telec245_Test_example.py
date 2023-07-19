@@ -5,7 +5,7 @@ Automated Measurement Framework - Telec245 measurement example
 This script is intended as an example for the Automated Measurement Framework. Information about the example can be found in the README file
 in this folder. 
 
-Tested with: 
+Tested and developed with: 
     - Anritsu MS2692A
 
 """

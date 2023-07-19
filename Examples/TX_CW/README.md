@@ -5,8 +5,8 @@ This example allows the user to perform CW output power measurements (on both th
 Required instruments: 
 
 - Silicon Laboratories EFR32 with RAILTest configured
-- Spectrum analyzer (the example was tested with ... and ...)
-- (optional) Power supply (the example was tested with ... )
+- Spectrum analyzer (the example was tested with Anritsu MS2692A and Rohde&Schwarz FSV)
+- (optional) Power supply (the example was tested with Keysight E3646A)
 
 ## Getting started
 
@@ -22,8 +22,8 @@ Follow these steps to start measuring CW TX power with the Automated Measurement
    1. Set the chip and board names (these will only be used for documenting the results)
    2. Set the COM port of the WSTK (can be found in device manager for example)
    3. Set the VISA address of the spectrum analyzer and the (optional) power supply
-      - In the example, we connected through an ethernet cable to an Anritsu spectrum analyzer and through a USB cable to a .... power supply.
-      - If in doubt, you can run `pyvisa-shell` in the command line and then type `list`. This brings up a list with all the instrument addresses that VISA recognizes.
+      - In the example, we connected through an ethernet cable to an Anritsu spectrum analyzer and through a USB cable to a Keysight power supply.
+      - If in doubt, you can run `pyvisa-shell` in the command line and then type `list`. This brings up a list with all the instrument addresses that VISA recognizes. Then you can try opening the instruments to see if the visa connection can be established.
    4. Configure the parameters of the TX sweep
       - Measurement parameters (frequencies, supply voltage levels, numbers of harmonics)
       - Spectrum analyzer parameters (span, RBW): this is important to think through for higher frequency harmonics!

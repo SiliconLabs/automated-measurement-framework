@@ -9,6 +9,7 @@ in this folder.
 Tested with:
     - Keysight E3646A PSU
     - Anritsu MS2692A spectrum analyzer
+    - Rohde&Schwarz FSV spectrum analyzer
 
 """
 

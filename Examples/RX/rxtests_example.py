@@ -7,7 +7,9 @@ in this folder.
 
 Tested with:
 - Anritsu MS2692A spectrum analyzer
+- Rohde&Schwarz FSV spectrum analyzer
 - HP E4432B signal generator
+- Rohde&Schwarz SMBV100A signal generator
 
 """
 
