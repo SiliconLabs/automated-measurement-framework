@@ -21,7 +21,9 @@ The documentation for the classes can be found in the README files for the examp
 ## Provided examples:
 
 ### Recommended starting points:
-These are examples that have good documentation and "Getting started" guides.
+
+These are examples that have good documentation and "Getting started" guides. Most of the measurements needed during IoT RF development can be performed using only these scripts. 
+
 - **RX:** 
   - Sensitivity (BER/PER)
   - Waterfall diagram

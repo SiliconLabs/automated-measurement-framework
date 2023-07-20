@@ -105,9 +105,6 @@ class TXCWSweep():
         wstk_com_port: str = ""
         wstk_logger_settings: Logger.Settings = Logger.Settings()
 
-        # Tested chip and board names 
-
-
     def __init__(self,settings:Settings,chip_name:str,board_name:str):
         """
         Initialize measurement class
@@ -268,7 +265,6 @@ class TXCWSweep():
                         if n == 1:
                             if self.settings.psu_present:
                                 i = self.psu.measCurrent() * 1000
-                                #print(pl, i)
                                 measured_power_curr[k] = i
                                 tx_measurement_record['TX current [mA]'] = i
                             else:
@@ -315,7 +311,7 @@ class TXCWSweep():
             # if someone already closed the visa session
             except visaerrors.InvalidSession:
                 self.psu.logger.handlers.clear() # clear psu logger otherwise it will duplicate log
-                self.initialize_psu() #reinitialize psu session, ugly I know, sorry
+                self.initialize_psu() #reinitialize psu session
                 self.psu.toggleOutput(False) # turn off output
                 self.psu.logger.handlers.clear()
                 del self.psu

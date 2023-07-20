@@ -106,7 +106,7 @@ class Sensitivity():
         measure_with_CTUNE_w_SA: bool = False
         measure_with_CTUNE_w_SG: bool = False
         #error rate settings
-        err_rate_type: str = 'BER' #suprise, other possible option is 'PER'
+        err_rate_type: str = 'BER' # other possible option is 'PER'
         err_rate_threshold_percent:float = 0.1
 
         #SG settings 
@@ -181,10 +181,8 @@ class Sensitivity():
 
     def _set_measurement_times(self):
         if self.settings.err_rate_type == 'PER':
-            # This should probably be bigger than this by some margin
             self.siggen_packet_delay_s = self.get_packet_length(self.settings.siggen_per_packet_filename) / (self.settings.siggen_modulation_symbolrate_sps * self.settings.siggen_modulation_bits_per_symbol)
             self.siggen_packet_delay_s *= 1.2
-            # self.per_timeout_ms = ?
             # If the result is a very small number, return this to a good default value
             if self.siggen_packet_delay_s < 0.001:
                 self.siggen_packet_delay_s = 0.001
@@ -449,7 +447,6 @@ class Sensitivity():
         pwr_raw = 200
 
         self.initialize_specan()
-        #sleep(0.1)
         self.specan.setFrequency(freq)
         sleep(0.1)
 
@@ -781,8 +778,8 @@ class Blocking(Sensitivity):
 
         blocker_cable_attenuation_dB: float = 7
 
-        blocker_start_power_dBm: float = -43   #without the cable attenution
-        blocker_stop_power_dBm: float = -3     #without the cable attenution
+        blocker_start_power_dBm: float = -43   #without the cable attenuation
+        blocker_stop_power_dBm: float = -3     #without the cable attenuation
         blocker_power_steps: int = 41
         blocker_power_list_dBm: list|None = None
 
