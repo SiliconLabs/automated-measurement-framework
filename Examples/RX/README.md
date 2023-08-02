@@ -2,16 +2,24 @@
 
 This example allows the user to perform various RX measurements using a signal generator. The available measurements are: 
 - BER/PER sensitivity
-- Sensitivity with frequency offset
+  - This test implements a basic sensitivity measurement. The script sweeps through the given power levels until it detects a PER or BER value that is greater than the given error rate threshold. The power level where this happens will be logged as the measured sensitivity.
+  - For PER measurements, a valid packet for the given PHY has to be loaded into the generator. You can find a standard RAIL packet included in this folder. 
+  - All the measurements that measure PER or BER in some form (all of them here except RSSI) inherit their parameters from this measurement.
 - Waterfall diagram
-- RSSI sweep
+  - This is basically the same as a sensitivity measurement, but it doesn't stop at the error rate threshold, instead sweeps through *all* the given power levels. It can be useful when experiencing noisy behavior regarding BER/PER numbers.
+- Sensitivity with frequency offset
+  - This test measures sensitivity using a signal that has a frequency offset compared to the expected carrier. This offset can be sweeped, allowing the user to map out a given configuration's ability to handle frequency errors.
+  - For this script, a `Plot_Bathtub` option is available. If this is set to `True`, the measurement doesn't stop at the set error rate threshold, but sweeps through all the power levels (just like with a waterfall diagram, but for every frequency offset). The output of this is a 3D HTML plot of the results. Warning: this can make the measurement very slow to complete.
 - Blocking performance
+  - This script first measures sensitivity (with either BER or PER, depending on the settings), then sets the useful signal's power to be a certain level higher than the result (how much higher this is can be set of course). Then, the second generator starts transmitting a CW signal and measures the power level where the BER or PER reaches a certain error rate threshold.
+- RSSI sweep
+  - This measurement transmits a PN9 modulated signal then measures the RSSI recorded by the DUT. The frequency of this injected signal can be sweeped.  
 
-As these measurements are all derivatives of the Sensitivity class, we will focus on doing a basic sensitivity measurement in the "Getting started" section. All other measurement options can be easily figured out from the class documentations in this page.
+As these measurements are all derivatives of the Sensitivity class, we will focus on doing a basic sensitivity measurement in the "Getting started" section. All other measurement options can be easily figured out from the class documentations in this page or the code itself.
 
 Required instruments: 
 
-- Silicon Laboratories EFR32 with RAILTest configured
+- Silicon Laboratories EFR32 with RAILTest configured (with the correcty PHY and the *"reconfigure for BER"* option set if needed)
 - Signal generator (tested with Rohde&Schwarz SMBV100A and HP E4432B)
 - (optional) Shielded box
 - (for blocking) Other signal generator or spectrum analyzer with generator functionality (tested with Rohde&Schwarz SMBV100A, HP E4432B and Anritsu MS2692A)
@@ -23,11 +31,11 @@ Follow these steps to start measuring RX performance with the Automated Measurem
 
 1. Install the framework by following the steps described in the README of the main folder
 2. Activate the virtual environment by running the `activate_environment` script from PowerShell
-3. Configure the DUT with a Railtest application. 
-   - It is important to configure the DUT with the actual PHY parameters that the measurement will use. If you need to test more PHYs in an automated way, you can add multiple radio configs to the RAILTest that you are using, and you can switch between them using the `setconfigindex(config_index)` command found in the `WSTK_RAILTest_driver` class. 
-   - If you are planning to do BER measurements, make sure to select the "*reconfigure for BER*" option in the radio configurator. Otherwise, make sure that this is disabled
-   - For blocking testing, an RF power combiner needs to be used
-4. Put together the physical measurement setup. 
+3. Configure the DUT with a Railtest application 
+   - It is important to configure the DUT with the actual PHY parameters that the measurement will use. If you need to test more PHYs in an automated way, you can add multiple radio configs to the RAILTest that you are using, and you can switch between them using the WSTK driver module.
+   - If you are planning to do BER measurements, make sure to select the "*reconfigure for BER*" option in the radio configurator. Otherwise, make sure that this is disabled.
+   - For blocking testing, an RF power combiner needs to be used to combine the blocking and useful signals.
+4. Put together the physical measurement setup
    - For sensitivity measurements in general, a shielded box is recommended.
 5. In the code: 
    1. Set the chip and board names (these will only be used for documenting the results)

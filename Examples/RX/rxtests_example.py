@@ -32,8 +32,11 @@ from common import Logger, Level
 Measure_Sensitivity = False                         # Sensitivity measurement 
 Measure_Waterfall = True                            # Full waterfall measurement between defined input power levels
 Measure_Blocking_w_Sensitivity = False              # Sensitivity and Blocking measurements
-Measure_Sensitivity_w_FrequencyOffset = False       # Sensitivity measurement with frequency offsets defined
 Measure_RSSI_Sweep = False                          # RSSI sweep versus input power and frequency
+Measure_Sensitivity_w_FrequencyOffset = False       # Sensitivity measurement with frequency offsets defined
+# When using Measure_Sensitivity_w_FrequencyOffset, this can be set to 'True' to measure and plot a whole bathtub curve
+# Warning: this can make the measurement a lot slower
+Plot_Bathtub = False
 # Perform crystal CTUNE tuning before the tests?
 CTUNE_Tuning_w_SA = False                           # CTUNE tuning with the spectrum analyzer, for blocking measurements do not use SA for CTUNE tuning, use SG below instead
 CTUNE_Tuning_w_SG = False                           # CTUNE tuning with the signal generator
@@ -49,32 +52,30 @@ Blocking_Siggen_Address = 'TCPIP::169.254.88.77::INSTR' # Address of the generat
 Frequency_Start_Hz = 868e6                          # Test frequency start
 Frequency_Stop_Hz = 928e6                           # Test frequency stop
 Frequency_Num_Steps = 31                            # Number of frequency points between start and stop defined above
-Frequency_List_Hz = [868e6]                  # List of Test frequencies. This list is used when given, if it is None then list is created from start, stop and steps defined above.
+Frequency_List_Hz = [868e6]                         # List of Test frequencies. This list is used when given, if it is None then list is created from start, stop and steps defined above.
 # Inpu power and modulation settings
 SigGen_Power_Start_dBm = -110                       # Signal Generator start power, used on the desired signal path
 SigGen_Power_Stop_dBm = -125                        # Signal Generator stop power, used on the desired signal path
-SigGen_Power_Num_Steps = 31
-SigGen_Power_List = None                        # Number of power steps, used on the desired signal path
+SigGen_Power_Num_Steps = 31                         # Number of power steps, used on the desired signal path
+SigGen_Power_List = None                            # List of power levels. This list is used when given, if it is None then list is created from start, stop and steps defined above.
 Modulation_Type = 'FSK2'                            # Modulation type
-Symbol_Rate_bps = 50e3                             # Symbol rate in bps
+Symbol_Rate_bps = 50e3                              # Symbol rate in bps
 Freq_Deviation_Hz = 25e3                            # Frequency deviation in Hz
 Modulation_Bits_Per_Symbol = 1
 #error rates
 Error_Rate_Type = 'BER'
 Stream_Type ='PN9'  
 Error_Rate_Threshold = 0.1
-Plot_Bathtub = False
 Pattern_Repeat = 'CONT'
 Per_Packet_Filename = "std_rail_packet.csv"
 
-#uncomment for PER
+# # uncomment for PER
 # Error_Rate_Type = 'PER'
-# Stream_Type ='\"TEMP@BIT\"'                                 # for BER this should be 'PN9', for PER this is the packet name on the generator
+# Stream_Type ='\"TEMP@BIT\"'                         # for BER this should be 'PN9', for PER this is the packet name on the generator
 # Error_Rate_Threshold = 15
 # Pattern_Repeat = 'SING'
-# Plot_Bathtub = False
 
-## Cable losses
+# Cable losses
 Desired_Path_Cable_Attenuation_dB = 0               # cable loss on the desired signal path
 Blocker_Path_Cable_Attenuation_dB = 0               # cable loss on hte blocker signal path
 # Blocking test condition
@@ -90,10 +91,10 @@ Blocker_Power_Stop_dBm = -5                         # blocker signal stop power
 Blocker_Power_Num_Steps = 46                        # number of blocker power levels
 Blocker_Power_List_dBm = None                       # List of power points of the blocker signal. This list is used when given, if it is None then list is created from start, stop and steps defined above.
 # Offset frequencies for freq-offset sensitivitiy tests
-Frequency_Offset_Start_Hz = -2e3                  # frequency offset start for offset-Sensitivity test
-Frequency_Offset_Stop_Hz = 2e3                     # frequency offset stop for offset-Sensitivity test
+Frequency_Offset_Start_Hz = -2e3                    # frequency offset start for offset-Sensitivity test
+Frequency_Offset_Stop_Hz = 2e3                      # frequency offset stop for offset-Sensitivity test
 Frequency_Offset_Steps = 21                         # number of frequency offset steps during offset-Sensitivity test                      
-Frequency_Offset_List_Hz = None                  # List of frequency offsets. This list is used when given, if it is None then list is created from start, stop and steps defined above.
+Frequency_Offset_List_Hz = None                     # List of frequency offsets. This list is used when given, if it is None then list is created from start, stop and steps defined above.
 # Input frequency settings for RSSI sweep tests
 Frequency_SigGen_Start_Hz = 868e6                   # SigGen frequency start for rssi sweep test
 Frequency_SigGen_Stop_Hz = 915e6                    # SigGen frequency stop for rssi sweep test

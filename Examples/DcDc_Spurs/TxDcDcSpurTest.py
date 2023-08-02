@@ -5,7 +5,7 @@ Automated Measurement Framework - DC-DC spur measurement example
 This script is intended as an example for the Automated Measurement Framework. Information about the example can be found in the README file
 in this folder. 
 
-Tested and developed with:
+Tested with and developed for:
     - Anritsu MS2692A
 
 """

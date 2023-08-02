@@ -33,9 +33,9 @@ freq = 470e6
 pwr = -20
 
 # Set the signal generator parameters
-#specan.reset()
+
 specan.setAppSwitch("SG") #"SA" for spectrum analyzer, "SG" for signal generator, "PN" for phase noise measurements
-#specan.initiate()
+
 print("SigGen setings:")
 specan.setSigGenFreq_Hz(freq)
 print(specan.getSigGenFreq_Hz())

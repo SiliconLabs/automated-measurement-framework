@@ -35,7 +35,7 @@ if __name__ == "__main__":
     # Transmit in PN9 stream mode
     wstk_tx.transmit(mode="PN9",frequency_Hz=frequency,power_dBm=0)
 
-    # Blocking BER measurement function with timeout, syncs on PN9
+    # BER measurement function with timeout, syncs on PN9
     # Can only be used with BER configured RAILtest
     ber_percent,done_percent,rssi = wstk_rx.measureBer(nbytes=100000,timeout_ms=10000,frequency_Hz=frequency) 
 

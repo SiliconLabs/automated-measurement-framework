@@ -14,11 +14,13 @@ The goal of this project is to provide an open source solution for the automatio
 
 First, it is recommended to read everything found on this page. After that, the *TxCWPower* or *RX* examples are a great way to start out with using the framework. For these scripts, you can also find detailed getting started guides in the appropriate folder. Most of the measurements needed in everyday RF development can be done using only these two examples.
 
-There are also small examples provided for each instrument driver. You can use these to try out the basic functions provided by these submodules. 
+There are also small examples provided for each instrument driver. These can be used to try out the basic functions provided by these submodules. 
 
 The documentation for the classes can be found in the README files for the examples and in the code itself as comments.
 
 ## Provided examples:
+
+All examples and their more detailed documentation can be found in the *Examples* folder.
 
 ### Recommended starting points:
 

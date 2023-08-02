@@ -35,10 +35,14 @@ specan.setFrequency(915e6)
 specan.setSpan(50e3)
 specan.setRBW(1000.0)
 specan.setRefLevel(10.0)
+
 # Please see the device manual for available detector types 
 # specan.setDetector("APE") # Auto-peak detector on Rohde&Schwarz instruments
 # specan.setDetector("NORM") # Anritsu: Simultaneous detection for positive and negative peaks
-# specan.setTraceStorageMode("OFF") # Please see the device manual for available trace storage modes
+
+# Please see the device manual for available trace storage modes
+# specan.setTraceStorageMode("OFF")
+
 specan.initiate()
 marker = specan.getMaxMarker() # Get the measurement result
 print(marker)

@@ -738,7 +738,7 @@ class Sensitivity():
 
             if self.settings.measure_with_CTUNE_w_SA:
                 self.ctune_w_sa()
-                self.logger.warn("Switch to SG!")
+                self.logger.warn("Switch to SG!\nPress 'Enter' after the correct connection is made.")
                 input()
 
             if self.settings.measure_with_CTUNE_w_SG:
@@ -1551,6 +1551,7 @@ class RSSI_Sweep(Sensitivity):
     
     def initiate(self):
             
+        # RSSI sweep wasn't working when PER options were set, this overwrites that
         if self.settings.siggen_stream_type != 'PN9' or self.settings.siggen_pattern_repeat != "CONT":
             self.logger.warning("Setting stream type as PN9 and pattern repeat mode as CONT.")
 

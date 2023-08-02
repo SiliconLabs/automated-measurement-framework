@@ -17,18 +17,17 @@ Follow these steps to start measuring CW TX power with the Automated Measurement
 3. Configure the DUT with a Railtest application. 
    - Because we are using CW signals here, this configuration doesn't matter much (as both TX power and frequency can be controlled from the framework)
 4. Put together the physical measurement setup. 
-   - If an external power supply is used, check that the VMCU of the radio board is disconnected from the WSTK.
+   - If an external power supply is used, check that the VMCU of the radio board is disconnected from the WSTK. Normally, this can be done by setting the power switch on the WSTK to "battery" and connecting the power supply to breakout pins 1 and 2 (GND and VMCU). 
 5. In the code: 
    1. Set the chip and board names (these will only be used for documenting the results)
    2. Set the COM port of the WSTK (can be found in device manager for example)
    3. Set the VISA address of the spectrum analyzer and the (optional) power supply
       - In the example, we connected through an ethernet cable to an Anritsu spectrum analyzer and through a USB cable to a Keysight power supply.
-      - If in doubt, you can run `pyvisa-shell` in the command line and then type `list`. This brings up a list with all the instrument addresses that VISA recognizes. Then you can try opening the instruments to see if the visa connection can be established.
    4. Configure the parameters of the TX sweep
-      - Measurement parameters (frequencies, supply voltage levels, numbers of harmonics)
-      - Spectrum analyzer parameters (span, RBW): this is important to think through for higher frequency harmonics!
+      - Measurement parameters (frequencies, supply voltage levels, numbers of harmonics).
+      - Spectrum analyzer parameters (span, RBW): this is important to think through for higher frequency harmonics.
       - You can find a detailed list of all the available parameters below.
-      - If no power supply is used, make sure to set `psu_present` to `False`
+      - If no power supply is used, make sure to set `psu_present` to `False`, otherwise the script will try to connect to it and throw an error.
 6. Run the *txcwsweep_example.py* Python script from the virtual environment using `py txcwspweep_example.py` in the correct folder. The output will be an excel file with all the measured raw data and output graphs.
 
 

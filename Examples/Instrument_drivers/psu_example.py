@@ -26,8 +26,6 @@ from time import sleep
 
 psu = pyPSU.PSU("ASRL8::INSTR")
 
-#psu.geterror()
-
 psu.selectOutput(1)
 psu.toggleOutput(True)
 
