@@ -64,7 +64,7 @@ In terms of devices that can be tested, currently only Series 1 and 2 EFR32 devi
 
 ### Execution
 
-Open PowerShell and navigate to the directory containing the script. Execute the script using the command `.\install_script.ps1`.
+Open PowerShell and navigate to the directory containing the script. Execute the script using the command `.\installer_script.ps1`.
 
 
 The script performs the following actions:
@@ -77,7 +77,7 @@ The script performs the following actions:
 6. Downloads and installs NI-VISA.
 7. Downloads and installs Keysight VISA.
 8. Updates the submodules
-9. At the end of the script execution, the virtual environment is activated. To deactivate the environment, execute `deactivate` in the console. To reactivate the environment, execute `activate_enviroment.ps1`.
+9. At the end of the script execution, the virtual environment is activated. To deactivate the environment, execute `deactivate` in the console. To reactivate the environment, execute `.\activate_environment.ps1`.
 
 
 ### Parameters

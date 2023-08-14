@@ -13,7 +13,7 @@ Required instruments:
 Follow these steps to start measuring CW TX power with the Automated Measurement Framework:
 
 1. Install the framework by following the steps described in the README of the main folder
-2. Activate the virtual environment by running the `activate_environment` script from PowerShell
+2. Activate the virtual environment by running the `.\activate_environment.ps1` command (if it is not already active)
 3. Configure the DUT with a Railtest application. 
    - Because we are using CW signals here, this configuration doesn't matter much (as both TX power and frequency can be controlled from the framework)
 4. Put together the physical measurement setup. 

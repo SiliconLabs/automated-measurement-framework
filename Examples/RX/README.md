@@ -30,7 +30,7 @@ Required instruments:
 Follow these steps to start measuring RX performance with the Automated Measurement Framework:
 
 1. Install the framework by following the steps described in the README of the main folder
-2. Activate the virtual environment by running the `activate_environment` script from PowerShell
+2. Activate the virtual environment by running the `.\activate_environment.ps1` command (if it is not already active)
 3. Configure the DUT with a Railtest application 
    - It is important to configure the DUT with the actual PHY parameters that the measurement will use. If you need to test more PHYs in an automated way, you can add multiple radio configs to the RAILTest that you are using, and you can switch between them using the WSTK driver module.
    - If you are planning to do BER measurements, make sure to select the "*reconfigure for BER*" option in the radio configurator. Otherwise, make sure that this is disabled.

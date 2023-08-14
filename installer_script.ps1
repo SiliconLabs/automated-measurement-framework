@@ -25,15 +25,15 @@ Print "Automated Measurement Framework Install Script"
 Print "==============================================" 
 Print " "
 
-# delete previous enviroment
+# delete previous environment
 Print "-------------------------------------------------------"
 if((Test-Path "$local_python_dir")){
-    Print "Removing previous enviroment..."
+    Print "Removing previous environment..."
     Remove-Item -Force -Recurse -Path ($local_python_dir)
 }
 
 # getting pyenv to handle python versions, only local, no system-wide modifications
-Print "Fetching pyenv python enviroment manager from Github"
+Print "Fetching pyenv python environment manager from Github"
 git clone https://github.com/pyenv-win/pyenv-win.git ".\$local_python_dir\pyenv-win"
 Print "Installing separate local Python $local_python_version here"
 
@@ -45,12 +45,12 @@ Invoke-Expression "$pyenv_cmd install $local_python_version" # install custom py
 $local_py= "./$local_python_dir\pyenv-win\pyenv-win\versions\$local_python_version\python"
 
 
-# create virtual enviroment using the local py version
+# create virtual environment using the local py version
 Print "-------------------------------------------------------"
-Print "Creating virtual enviroment"
+Print "Creating virtual environment"
 Invoke-Expression "$local_py -m venv ./$local_python_dir/$venv_path"
 Invoke-Expression "./$local_python_dir/$venv_path/Scripts/activate" # activating the enviroment
-Print "Activating virtual enviroment"
+Print "Activating virtual environment"
 
 # install every required package from requirements.txt
 Print "-------------------------------------------------------"
@@ -115,5 +115,5 @@ if ($mode -eq "comp"){
 }
 Print "===================Finished==================="
 Print "=============================================="
-Print "Virtual Enviroment active, to quit execute 'deactivate'"
-Print "To reactivate, execute 'activate_enviroment.ps1' "
+Print "Virtual Environment active, to quit execute 'deactivate'"
+Print "To reactivate, execute 'activate_environment.ps1' "
