@@ -62,6 +62,16 @@ In terms of devices that can be tested, currently only Series 1 and 2 EFR32 devi
 
  The Automated Measurement Framework comes with a script that is designed to automate the installation process. It contains a set of variables and functions that help the user install the required dependencies.
 
+ The script does not install Keysight IO Libraries Suite, it has to be downloaded and installed by the user. 
+
+ **WARNING: If not installed Keysight, Agilent and HP Instruments will not work properly!**
+
+
+ Currently tested versions:
+- Keysight IO Libraries Suite 2022 Update 1
+
+[Download link](www.keysight.com/find/iosuite) 
+
 ### Execution
 
 Open PowerShell and navigate to the directory containing the script. Execute the script using the command `.\installer_script.ps1`.
@@ -75,7 +85,7 @@ The script performs the following actions:
 4. Creates a virtual environment using the local Python version.
 5. Installs all required Python packages from the `requirements.txt` file.
 6. Downloads and installs NI-VISA.
-7. Downloads and installs Keysight VISA.
+7. Checks for Keysight IO Libraries Suite (needed for Keysight, Agilent and HP Instruments).
 8. Updates the submodules
 9. At the end of the script execution, the virtual environment is activated. To deactivate the environment, execute `deactivate` in the console. To reactivate the environment, execute `.\activate_environment.ps1`.
 
@@ -86,8 +96,6 @@ The script contains the following variables:
 * `$local_python_dir`: A string that specifies the directory where the local Python environment will be installed. This variable should not be changed unless the `.gitignore` file is also updated.
 * `$venv_path`: A string that specifies the name of the virtual environment that will be created.
 * `$local_python_version`: A string that specifies the version of Python that will be installed in the local Python environment. The version must be in the format 3.x.x. The tested python version is 3.10.5
-* `$keysight_visa_exec`: A string that specifies the name of the Keysight VISA installer file.
-* `$keysight_visa_web_file`: A string that specifies the location of the Keysight VISA installer file on the SiLabs network.
 * `$ni_visa_exec`: A string that specifies the name of the NI-VISA installer file.
 * `$ni_visa_web_file`: A string that specifies the location of the NI-VISA installer file on the web.
 
