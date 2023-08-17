@@ -66,6 +66,7 @@ class Sensitivity():
         :param float siggen_modulation_symbolrate_sps: Symbol rate of the output signal in symbols per second,
                                                         minimum :47.684 sps, max: 12.500000 Msps
         :param float siggen_modulation_deviation_Hz: Frequency deviation in hertz for FM types
+        :param int siggen_modulation_bits_per_symbol: Bits per symbol, important for R&S generators, to correctly calculate transmission length
         :param str siggen_stream_type: data type of the output stream,
                                        values: PN9|PN11|PN15|PN20|PN23|FIX4|"<file name>"|EXT|P4|P8|P16|P32|P64
                                         see all documentation for stream modes by searching for "RADio:CUSTom:DATA" in https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf
@@ -124,7 +125,7 @@ class Sensitivity():
         siggen_stream_type:str = "PN9" #see all available stream modes by searching for "RADio:CUSTom:DATA" in https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf
         siggen_filter_type:str = "GAUS" #check generators manual, GAUS is for gaussian
         siggen_filter_BbT:float = 0.5
-        siggen_custom_on:bool = True
+        siggen_custom_on:bool = True #deprecated
         siggen_per_packet_filename :str = "pysiggen/packets/std_rail_packet.csv"
         siggen_per_packet_siggen_name :str = "TEMP"
         siggen_pattern_repeat:str = "SINGle"

@@ -57,6 +57,7 @@ The `TXCWSweep.Settings` dataclass containing the settings, is documented below:
 - `pavdd_max` (float): Maximum supply voltage
 - `pavdd_num_steps` (int): Number of discrete voltage steps between stop and start values
 - `pavdd_levels` (list): Custom list of voltages
+- `psu_logger_settings`(Logger.Settings): Logger module settings for PSU
 
 ### Amplifier Parameters
 
@@ -64,6 +65,8 @@ The `TXCWSweep.Settings` dataclass containing the settings, is documented below:
 - `max_pwr_state` (int): Minimum power setting for EFR internal amplifier
 - `pwr_num_steps` (int): Number of amplifier power values between stop and start values
 - `pwr_levels` (list): Custom list of power values
+- `pwr_format` (str): 'raw' or 'dbm', 'raw' uses the EFRs  raw power settings.
+- `pa_config` (PA_Config): Power Amplifier config, check pyRAIL.py
 
 ### Spectrum Analyzer Parameters
 
@@ -73,7 +76,9 @@ The `TXCWSweep.Settings` dataclass containing the settings, is documented below:
 - `specan_ref_level_dbm` (int): SA reference level in dBm
 - `specan_detector_type` (str): SA detector type, directly passed to pySpecAn
 - `specan_ref_offset` (float): SA reference offset
+- `specan_logger_settings`(Logger.Settings): Logger module settings for SA
 
 ### RAILTest Device Parameters
 
 - `wstk_com_port` (str): COM port of the RAILTest device
+- `wstk_logger_settings` (Logger.Settings): Logger module settings for WSTK.

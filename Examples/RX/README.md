@@ -25,6 +25,13 @@ Required instruments:
 - (for blocking) Other signal generator or spectrum analyzer with generator functionality (tested with Rohde&Schwarz SMBV100A, HP E4432B and Anritsu MS2692A)
 - (optional) Spectrum analyzer for automatic CTUNE setting (tested with Anritsu MS2692A and Rohde&Schwarz FSV)
 
+
+Manuals for tested generators:
+
+[HP E4432B programming guide](https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf).
+
+[ R&S SMBV100A programming guide](https://scdn.rohde-schwarz.com/ur/pws/dl_downloads/dl_common_library/dl_manuals/gb_1/s/smbv/SMBV100A_OperatingManual_en_18.pdf)
+
 ## Getting started
 
 Follow these steps to start measuring RX performance with the Automated Measurement Framework:
@@ -58,8 +65,9 @@ Measuring receiver sensitivity of the EFR32-based design.
 
 Required instruments: 
 - SiLabs EFR with RAILTest configured
-- Signal Generator, currently tested with HP E4432B generator.
+- Signal Generator, currently tested with Rohde & Schwarz SMBV100A and HP E4432B generator.
 - (optional) If CTUNE is done with Spectrum analyzer, then it is needed
+
 
 The `Sensitivity.Settings` dataclass containing the settings, is documented below:
 ### Frequency Parameters
@@ -69,10 +77,12 @@ The `Sensitivity.Settings` dataclass containing the settings, is documented belo
 - `freq_num_steps` (int): Number of discrete frequency steps between stop and start values.
 - `freq_list_hz` (list): Custom list of frequencies.
 
+### Logger Settings
+- `logger_settings`(Logger.Settings): Logger module settings for the measurement, imported from common
 ### CTUNE Parameters
 
-- `measure_with_CTUNE_w_SA` (bool): Enable CTUNE with spectrum analyzer (more accurate).
-- `measure_with_CTUNE_w_SG` (bool): Enable CTUNE with signal generator (easier setup, faster).
+- `measure_with_CTUNE_w_SA` (bool): Enable CTUNE with spectrum analyzer (more accurate). Uses a CW signal from the DUT, measuring its accurate frequency and tunes accordingly.
+- `measure_with_CTUNE_w_SG` (bool): Enable CTUNE with signal generator (easier setup, faster). Uses CW signal from the generator, and measures RSSI on the DUT. While sweeping CTUNe values, it chooses Can be unreliable with wide bandwidth PHYs.
 
 ### Error rate parameters
 
@@ -84,20 +94,21 @@ The `Sensitivity.Settings` dataclass containing the settings, is documented belo
 - `cable_attenuation_dB` (float): Total cable loss in the test setup between SigGen and DUT.
 
 ### Signal Generator Parameters
-
+- `siggen_address` (str): VISA address of Signal Generator(SigGen), more in [PyVISA documentation](https://pyvisa.readthedocs.io/en/1.8/names.html)
 - `siggen_power_start_dBm` (float): Start SigGen power in dBm, cable loss not included.
 - `siggen_power_stop_dBm` (float): Stop SigGen power in dBm, cable loss not included.
 - `siggen_power_steps` (int): Number of discrete SigGen power steps between stop and start values.
 - `siggen_power_list_dBm` (list): Custom list of SigGen powers in dBm.
-- `siggen_modulation_type` (str): Modulation type, most common values: BPSK|QPSK|OQPSK|MSK|FSK2|FSK4|FSK8. See all modulation abbrevations at page 299 of [Keysight programming guide](https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf).
-- `siggen_modulation_symbolrate_sps` (float): Symbol rate of the output signal in symbols per second, minimum :47.684 sps, max: 12.500000 Msps.
+- `siggen_modulation_type` (str): Modulation type, most common values: BPSK|QPSK|OQPSK|MSK|FSK2|FSK4|FSK8. See manuals of supported generators(at the end of introduction).
+- `siggen_modulation_symbolrate_sps` (float): Symbol rate of the output signal in symbols per second.
 - `siggen_modulation_deviation_Hz` (float): Frequency deviation in hertz for FM types.
-- `siggen_stream_type` (str): Data type of the output stream, values: PN9|PN11|PN15|PN20|PN23|FIX4|"<file name>"|EXT|P4|P8|P16|P32|P64. See all documentation for stream modes by searching for "RADio:CUSTom:DATA" in [Keysight programming guide](https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf).
-- `siggen_filter_type` (str): "Gaussian" or "Nyquist".
+- `siggen_modulation_bits_per_symbol` (int): Bits per symbol, important for R&S generators, to correctly calculate transmission length
+- `siggen_stream_type` (str): Data type of the output stream, values: PN9|PN11|PN15|PN20|PN23|FIX4|"<file name>"|EXT|P4|P8|P16|P32|P64. See manuals of supported generators(at the end of introduction).
+- `siggen_filter_type` (str): RCOSine | COSine | GAUSs | LGAuss | CONE. See manuals of supported generators(at the end of introduction). Older instruments, like the HP only support gaussian and nygquist filter shapes.
 - `siggen_filter_BbT` (float): Filter BT factor between 0 and 1.
 - `siggen_custom_on` (bool): Custom mode one, for all SG functionality this should be on.
-- `siggen_per_packet_filename`: the name of the file on this PC, that contains the binary data of the test packet
-                                                Should be in the format of Saleae Logic analyzers csv export
+- `siggen_per_packet_filename` (str): the name of the file on this PC, that contains the binary data of the test packet.
+Should be in the format of Saleae Logic analyzers .csv export.
 - `siggen_per_packet_siggen_name`(str): what the name of the @BIT file will be on the generator itself
 - `siggen_pattern_repeat` (str): continuous or single ( CONT or SING)
 - `siggen_trigger_type` (str): KEY|BUS|EXT- triggerkey on generator, GPIB bus, or external, almost always use BUS
@@ -105,7 +116,7 @@ The `Sensitivity.Settings` dataclass containing the settings, is documented belo
 
 ### Spectrum Analyzer Parameters
 
-- `specan_address` (str): VISA address of Spectrum Analyzer, can check PyVISA documentation
+- `specan_address` (str): VISA address of Spectrum Analyzer,  more in [PyVISA documentation](https://pyvisa.readthedocs.io/en/1.8/names.html)
 - `specan_span_hz` (int): SA span in Hz
 - `specan_rbw_hz` (int): SA resolution bandwidth in Hz
 - `specan_ref_level_dbm` (int): SA reference level in dBm
@@ -133,9 +144,9 @@ The `FreqOffset_Sensitivity.Settings` dataclass containing the settings, is docu
 - `freq_offset_steps` (int): Frequency offset step values in Hz
 - `freq_offset_list_Hz` (list): Discrete frequency list option
 
-- `plot_bathtub` (bool): Plot Freq. Offset - Power - PER 3d graph, makes measurement slower, but sweeps every value, and generates html interactive plot
+- `plot_bathtub` (bool): Plot Freq. Offset - Power - PER 3D graph, makes measurement slower, but sweeps every value, and generates html interactive plot.
 
-- `bathtub_filename_html` (str): Name of aforementioned interactive plot, has to end with .html
+- `bathtub_filename_html` (str): Name of aforementioned interactive plot, has to end with .html.
 
 - `freq_offset_logger_settings` (Logger.Settings): Logger module settings for frequency offset measurement.
 
@@ -180,7 +191,7 @@ The `RSSI_Sweep.Settings` dataclass containing the settings, is documented below
 
 ---
 ## Waterfall
-Measures receiver sensitivity, just with a continuous power sweep and plotting capabilities
+Measures receiver sensitivity, just with a continuous power sweep, and plotting capabilities
 
 Settings completely inherited from `Sensitivity`.
 
