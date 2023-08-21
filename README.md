@@ -7,7 +7,7 @@ The goal of this project is to provide an open source solution for the automatio
 - Fully automatic and repeatable measurements and tests
 - Automatic and non-intrusive installation (doesn't effect local Python)
 - Easy to start out with well documented examples
-- Highly costumizable (fully open source)
+- Highly customizable (fully open source)
 - Easy to read and easy to process outputs (available as both Excel files and Pandas dataframes)
 
 ## Getting started:
@@ -64,13 +64,13 @@ In terms of devices that can be tested, currently only Series 1 and 2 EFR32 devi
 
  The script does not install Keysight IO Libraries Suite, it has to be downloaded and installed by the user. 
 
- **WARNING: If not installed Keysight, Agilent and HP Instruments will not work properly!**
+ **WARNING: If Keysight IO Libraries Suite is not installed, Agilent and HP Instruments will not work properly!**
 
 
  Currently tested versions:
 - Keysight IO Libraries Suite 2022 Update 1
 
-[Download link](www.keysight.com/find/iosuite) 
+[Download link](https://www.keysight.com/find/iosuite) 
 
 ### Execution
 

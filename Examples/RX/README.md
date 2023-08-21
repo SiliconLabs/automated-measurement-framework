@@ -28,7 +28,7 @@ Required instruments:
 
 Manuals for tested generators:
 
-[HP E4432B programming guide](https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf).
+[HP E4432B programming guide](https://www.keysight.com/zz/en/assets/9018-40178/programming-guides/9018-40178.pdf)
 
 [ R&S SMBV100A programming guide](https://scdn.rohde-schwarz.com/ur/pws/dl_downloads/dl_common_library/dl_manuals/gb_1/s/smbv/SMBV100A_OperatingManual_en_18.pdf)
 

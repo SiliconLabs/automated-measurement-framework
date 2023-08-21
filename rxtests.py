@@ -90,6 +90,9 @@ class Sensitivity():
 
         :param str wstk_com_port: COM port of the RAILTest device
         :param Logger.Settings wstk_logger_settings: Logger module settings for WSTK, imported from common
+
+        :param int ber_bytes_to_test: Number of bytes to be used for one BER measurement
+        :param int per_packets_to_tes: Number of packets to be used for one PER measurement
         """
         #Frequency range settings
         freq_start_hz: int = 868e6
