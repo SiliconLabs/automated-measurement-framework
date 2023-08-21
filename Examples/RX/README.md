@@ -126,9 +126,14 @@ Should be in the format of Saleae Logic analyzers .csv export.
 
 ### RAILTest Device Settings
 
-- `wstk_com_port`: COM port of the RAILTest device.
+- `wstk_com_port` (str): COM port of the RAILTest device.
 - `wstk_logger_settings` (Logger.Settings): Logger module settings for WSTK.
 
+### Test data quantities
+
+- `ber_bytes_to_test` (int): Number of bytes to be used for one BER measurement
+- `per_packets_to_test` (int): Number of packets to be used for one PER measurement
+  
 ---
 
 ## Frequency Offset Sensitivity
