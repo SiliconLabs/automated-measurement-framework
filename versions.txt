@@ -1,3 +1,0 @@
-# Working with these driver versions(driver_name=commit_hash):
-pywstk=530db8610e9bccfe3972c18674b53f2d2191c338
-pysiggen=4f51c569417e2c7f4b3a0cae6945e64c51a31032
