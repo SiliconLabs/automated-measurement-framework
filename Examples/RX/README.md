@@ -194,6 +194,10 @@ The `RSSI_Sweep.Settings` dataclass containing the settings, is documented below
 - `siggen_freq_steps` (int): SG frequency step values
 - `siggen_freq_steps` (list): Blocker frequency discrete list option
 
+### Known Issues
+
+EFR32MG1P/EFR32MG1B: MEasurement only works if the flashed RAILTest application has the `Reconfigure for BER testing` option enabled.
+
 ---
 ## Waterfall
 Measures receiver sensitivity, just with a continuous power sweep, and plotting capabilities
