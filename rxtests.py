@@ -1591,8 +1591,12 @@ class RSSI_Sweep(Sensitivity):
                         
                     self.siggen.setAmplitude(sigGen_power)
                     sleep(0.1)
-                    rssi_value = self.wstk.readRSSI()
-                    sleep(0.2)
+                    try:
+                        rssi_value = self.wstk.readRSSI()
+                    except ValueError: # workaround for railtest getrssi error bug 
+                        sleep(0.3)      #trying only once more because it never happened twice 
+                        rssi_value = self.wstk.readRSSI()
+                    sleep(0.3)
 
                     rssi_sweep_raw_measurement_record['Injected Frequency [MHz]'] = siggen_frequency/1e6
                     rssi_sweep_raw_measurement_record['Input Power [dBm]'] = sigGen_power-self.settings.cable_attenuation_dB
