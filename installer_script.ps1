@@ -95,7 +95,7 @@ if ($installedPackages) {
 
 
 # updating the  submodules
-git submodule update --init --recursive
+#git submodule update --init --recursive
 
 
 # if compatibility mode is enabled

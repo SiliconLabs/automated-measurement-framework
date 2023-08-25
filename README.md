@@ -86,8 +86,7 @@ The script performs the following actions:
 5. Installs all required Python packages from the `requirements.txt` file.
 6. Downloads and installs NI-VISA.
 7. Checks for Keysight IO Libraries Suite (needed for Keysight, Agilent and HP Instruments).
-8. Updates the submodules
-9. At the end of the script execution, the virtual environment is activated. To deactivate the environment, execute `deactivate` in the console. To reactivate the environment, execute `.\activate_environment.ps1`.
+8. At the end of the script execution, the virtual environment is activated. To deactivate the environment, execute `deactivate` in the console. To reactivate the environment, execute `.\activate_environment.ps1`.
 
 
 ### Parameters
